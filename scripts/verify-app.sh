@@ -32,10 +32,21 @@ fi
 
 SHORT_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_DIR/Contents/Info.plist")"
 BUILD_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP_DIR/Contents/Info.plist")"
-if [[ "$SHORT_VERSION" != "0.1.1" || "$BUILD_VERSION" != "2" ]]; then
+if [[ "$SHORT_VERSION" != "0.1.2" || "$BUILD_VERSION" != "3" ]]; then
   echo "应用版本不符合预期：$SHORT_VERSION ($BUILD_VERSION)" >&2
   exit 1
 fi
 
 codesign --verify --deep --strict "$APP_DIR"
+SIGNING_INFORMATION="$(codesign -d --verbose=4 "$APP_DIR" 2>&1)"
+if ! grep -F 'Authority=ChatUnpack Local Signing' <<<"$SIGNING_INFORMATION" >/dev/null; then
+  echo "应用未使用 ChatUnpack 专用签名身份" >&2
+  exit 1
+fi
+
+DESIGNATED_REQUIREMENT="$(codesign -d -r- "$APP_DIR" 2>&1)"
+if grep -F 'cdhash' <<<"$DESIGNATED_REQUIREMENT" >/dev/null; then
+  echo "应用仍在使用会随构建变化的 cdhash 身份" >&2
+  exit 1
+fi
 echo "ChatUnpack.app 校验通过"

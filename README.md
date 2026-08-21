@@ -21,11 +21,12 @@ ChatUnpack 是一个个人自用的 macOS 离线工具：把你主动打开的�
 
 ```bash
 swift run --arch arm64 ChatUnpackCoreTestRunner
+./scripts/setup-local-signing.sh
 ./scripts/build-app.sh
 ./scripts/verify-app.sh
 ```
 
-构建脚本会生成 `dist/ChatUnpack.app`，并使用 ad-hoc 签名。个人自用首次打开时可能需要在 Finder 中右键选择“打开”。构建脚本只清理并写入仓库自己的 `dist/ChatUnpack.app`。
+`setup-local-signing.sh` 只需运行一次：它会在当前用户的登录钥匙串中创建一个仅供 ChatUnpack 本地构建使用的代码签名证书，不导出或保留私钥文件。构建脚本会生成 `dist/ChatUnpack.app`，并强制使用这个稳定身份，避免每次更新后 macOS 把应用识别成另一份程序。个人自用首次打开时可能需要在 Finder 中右键选择“打开”。构建脚本只清理并写入仓库自己的 `dist/ChatUnpack.app`。
 
 ## 权限
 
