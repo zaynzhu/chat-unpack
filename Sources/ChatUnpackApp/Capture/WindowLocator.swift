@@ -4,23 +4,6 @@ import CoreGraphics
 import Foundation
 import ScreenCaptureKit
 
-public struct ScrollPosition: Sendable, Equatable {
-  public let value: CGFloat
-  public let minimum: CGFloat
-  public let maximum: CGFloat
-
-  public init(value: CGFloat, minimum: CGFloat, maximum: CGFloat) {
-    self.value = value
-    self.minimum = minimum
-    self.maximum = maximum
-  }
-
-  public var normalized: CGFloat {
-    guard maximum > minimum else { return 0 }
-    return (value - minimum) / (maximum - minimum)
-  }
-}
-
 @MainActor
 public final class LocatedWindow {
   public let processIdentifier: pid_t

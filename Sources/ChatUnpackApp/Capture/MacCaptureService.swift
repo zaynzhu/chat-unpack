@@ -185,14 +185,14 @@ public final class MacCaptureService: CaptureServiceProtocol {
           viewportCount: viewportIndex + 1,
           messageCount: assembler.messageCount,
           lowConfidenceCount: assembler.lowConfidenceCount,
-          percent: scrollDriver.isAtBottom ? 1 : nil
+          percent: viewportIndex > 0 && scrollDriver.isAtBottom ? 1 : nil
         )
         streamContinuation?.yield(CaptureUpdate(
           progress: progress,
           transcript: assembler.transcript
         ))
 
-        if scrollDriver.isAtBottom || unchangedRounds >= 3 {
+        if (viewportIndex > 0 && scrollDriver.isAtBottom) || unchangedRounds >= 3 {
           break
         }
 
@@ -207,7 +207,18 @@ public final class MacCaptureService: CaptureServiceProtocol {
           reason: "正在向下滚动"
         )
         activityMonitor.stop()
-        try scrollDriver.scrollDown(viewportHeight: CGFloat(messageRegion.height))
+        let didScroll = try await scrollDriver.scrollDown(
+          viewportHeight: CGFloat(messageRegion.height),
+          currentFingerprint: fingerprint
+        ) { [weak self, weak locatedWindow] in
+          guard let self, let locatedWindow else {
+            throw WindowCaptureError.frameUnavailable
+          }
+          return try await self.stableFingerprint(window: locatedWindow)
+        }
+        if !didScroll {
+          break
+        }
         viewportIndex += 1
         try await Task.sleep(nanoseconds: 150_000_000)
         activityMonitor.reset()
