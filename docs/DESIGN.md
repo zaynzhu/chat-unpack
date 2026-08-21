@@ -1,6 +1,6 @@
 # ChatUnpack v0.1 详细设计
 
-> 状态：待实现
+> 状态：macOS v0.1 已实现并通过静态构建、核心测试与离线隐私审计；真实窗口验收待用户使用无隐私样本确认
 >
 > 首要平台：macOS 13 及以上，Apple Silicon
 >
@@ -1336,18 +1336,18 @@ struct Transcript: Sendable, Equatable {
 
 ### 24.2 隐私
 
-- [ ] 没有微信数据库或缓存访问代码。
-- [ ] 没有进程注入、Hook 或私有协议代码。
-- [ ] 没有网络客户端和遥测。
-- [ ] 截图不落盘。
-- [ ] 日志不包含聊天内容。
+- [x] 没有微信数据库或缓存访问代码（静态审计通过）。
+- [x] 没有进程注入、Hook 或私有协议代码（静态审计通过）。
+- [x] 没有网络客户端和遥测（静态审计通过）。
+- [x] 截图不落盘（静态审计通过）。
+- [x] 日志不包含聊天内容（静态审计通过）。
 - [ ] 未主动触发时不捕获、不 OCR、不枚举微信窗口。
 - [ ] 不向微信输入或发送任何内容。
 - [ ] 自动测试只使用合成数据。
 
 ### 24.3 性能
 
-- [ ] Apple Silicon Release 构建成功。
+- [x] Apple Silicon Release 构建成功。
 - [ ] 空闲 CPU 接近 0。
 - [ ] 空闲内存目标不超过约 80 MB。
 - [ ] 扫描峰值内存目标不超过约 350 MB。
@@ -1355,13 +1355,14 @@ struct Transcript: Sendable, Equatable {
 
 ### 24.4 交付
 
-- [ ] `swift test` 通过。
-- [ ] `scripts/build-app.sh` 生成 `dist/ChatUnpack.app`。
-- [ ] 应用 bundle identifier 固定。
-- [ ] 最低系统版本为 macOS 13。
-- [ ] Release 只包含 arm64。
-- [ ] 应用经过本地 ad-hoc 签名并可启动。
-- [ ] 提供本地使用和权限说明。
+- [x] `swift run --arch arm64 ChatUnpackCoreTestRunner` 通过。
+- [x] `scripts/build-app.sh` 生成 `dist/ChatUnpack.app`。
+- [x] 应用 bundle identifier 固定。
+- [x] 最低系统版本为 macOS 13。
+- [x] Release 只包含 arm64。
+- [x] 应用经过本地 ad-hoc 签名。
+- [ ] 应用可启动并完成合成窗口验收。
+- [x] 提供本地使用和权限说明。
 
 ## 25. 构建与打包
 
@@ -1370,6 +1371,7 @@ struct Transcript: Sendable, Equatable {
 - Swift 6。
 - Swift Package Manager。
 - macOS SDK。
+- 当前仅安装 Xcode Command Line Tools 的开发机缺少 XCTest 模块，因此仓库提供无第三方依赖的 `ChatUnpackCoreTestRunner`；完整 Xcode 环境后可再补 XCTest target。
 - 不依赖 CocoaPods、Homebrew 运行时或 Node.js。
 - 不引入第三方 Swift Package，除非后续有明确、不可替代的需求并单独评审。
 
@@ -1403,7 +1405,7 @@ struct Transcript: Sendable, Equatable {
 验证：
 
 - `swift build` 通过。
-- `swift test` 通过。
+- `swift run --arch arm64 ChatUnpackCoreTestRunner` 通过。
 - Markdown 示例与本文档一致。
 
 ### 阶段 2：基础界面与隐私状态
