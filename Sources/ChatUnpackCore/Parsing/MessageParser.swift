@@ -37,7 +37,7 @@ public struct MessageParser {
       let body = orderedLines.map {
         RecognizedLine(text: $0.text, confidence: $0.confidence)
       }
-      let warning = ScanWarning(code: "CU-A001", message: "未找到可靠的消息时间锚点")
+      let warning = ScanWarning.missingTimestampAnchor()
       return [ChatMessage(
         sender: RecognizedField(text: "", confidence: 0),
         timestamp: RecognizedField(text: "", confidence: 0),
@@ -97,7 +97,7 @@ public struct MessageParser {
       if senderText.isEmpty || timestampText.isEmpty {
         warnings.append(ScanWarning.lowConfidence())
       }
-      if senderConfidence < 0.70 || headerLine.confidence < 0.70 || bodyLines.contains(where: { $0.isLowConfidence }) {
+      if bodyLines.contains(where: { $0.isLowConfidence }) {
         warnings.append(ScanWarning.lowConfidence())
       }
 

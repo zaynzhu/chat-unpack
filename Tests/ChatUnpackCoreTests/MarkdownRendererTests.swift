@@ -23,24 +23,51 @@ func runMarkdownRendererTests(_ suite: inout TestSuite) {
   suite.expect(markdown.contains("第一行\n第二行"), "应保留正文换行")
   suite.expect(!markdown.contains("⚠️"), "完整结果不应输出未完成警告")
 
-  let uncertain = Transcript(
+  let moderateConfidence = Transcript(
     title: "模拟聊天记录",
     status: .complete,
     messages: [
       makeMessage(
-        sender: "存疑昵称",
+        sender: "虚构昵称",
         timestamp: "09:51",
-        body: ["存疑正文"],
+        body: ["第一行", "第二行"],
         senderConfidence: 0.50,
         timestampConfidence: 0.50,
         bodyConfidence: 0.50
       )
     ]
   )
-  let uncertainMarkdown = MarkdownRenderer().render(uncertain)
-  suite.expect(uncertainMarkdown.contains("**〔识别存疑〕存疑昵称**"), "低置信度昵称应标记")
-  suite.expect(uncertainMarkdown.contains("· 〔识别存疑〕09:51"), "低置信度时间应标记")
-  suite.expect(uncertainMarkdown.contains("〔识别存疑〕存疑正文"), "低置信度正文应标记")
+  let moderateMarkdown = MarkdownRenderer().render(moderateConfidence)
+  suite.expect(!moderateMarkdown.contains("〔识别存疑〕"), "中等置信度内容不应产生噪声标记")
+
+  let veryLowBody = Transcript(
+    title: "模拟聊天记录",
+    status: .complete,
+    messages: [
+      makeMessage(
+        sender: "虚构昵称",
+        timestamp: "09:51",
+        body: ["第一行", "第二行"],
+        senderConfidence: 0.30,
+        timestampConfidence: 0.30,
+        bodyConfidence: 0.30
+      )
+    ]
+  )
+  let veryLowMarkdown = MarkdownRenderer().render(veryLowBody)
+  let markerCount = veryLowMarkdown.components(separatedBy: "〔识别存疑〕").count - 1
+  suite.expect(markerCount == 1, "同一条消息的多行正文只应提示一次")
+  suite.expect(veryLowMarkdown.contains("**虚构昵称** · 09:51"), "昵称和合法时间不应添加存疑前缀")
+  suite.expect(veryLowMarkdown.contains("第一行\n第二行"), "存疑提示不能改变正文")
+
+  let missingHeader = Transcript(
+    title: "模拟聊天记录",
+    status: .complete,
+    messages: [makeMessage(sender: "", timestamp: "", body: ["正文"])]
+  )
+  let missingHeaderMarkdown = MarkdownRenderer().render(missingHeader)
+  suite.expect(missingHeaderMarkdown.contains("**未知发送者**"), "缺失昵称应使用中性占位符")
+  suite.expect(missingHeaderMarkdown.contains("· 〔识别存疑〕"), "缺失时间仍应明确提示")
 
   let nested = Transcript(
     title: "模拟聊天记录",

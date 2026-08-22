@@ -22,7 +22,7 @@ func runMessageParserTests(_ suite: inout TestSuite) {
     makeOCRLine("测试用户", x: 0.10, top: 0.10),
     makeOCRLine("09:51", x: 0.78, top: 0.10, width: 0.12),
     makeOCRLine("第一行", x: 0.10, top: 0.17, confidence: 0.95),
-    makeOCRLine("第二行", x: 0.10, top: 0.23, confidence: 0.62)
+    makeOCRLine("第二行", x: 0.10, top: 0.23, confidence: 0.30)
   ]
   if let message = MessageParser().parse(lines: confidenceLines, viewportIndex: 4).first {
     suite.expect(message.body.map(\.text) == ["第一行", "第二行"], "正文应保持行顺序")
@@ -40,7 +40,7 @@ func runMessageParserTests(_ suite: inout TestSuite) {
   if let message = partial.first {
     suite.expect(message.isPartial, "无时间锚点内容应标记为部分消息")
     suite.expect(message.body.map(\.text) == ["只有正文，没有时间锚点"], "部分正文不得丢失")
-    suite.expect(message.warnings.contains(where: { $0.code == "CU-A001" }), "应标记结构存疑")
+    suite.expect(message.warnings.contains(where: { $0.code == "CU-P001" }), "应标记时间锚点缺失")
   }
 
   let nestedLines = [

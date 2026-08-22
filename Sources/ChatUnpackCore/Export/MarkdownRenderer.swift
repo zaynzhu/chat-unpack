@@ -43,8 +43,8 @@ public struct MarkdownRenderer: Sendable {
   }
 
   private func render(_ message: ChatMessage) -> String {
-    let sender = render(message.sender)
-    let timestamp = render(message.timestamp)
+    let sender = renderSender(message.sender)
+    let timestamp = renderTimestamp(message.timestamp)
 
     var lines = ["**\(sender)** · \(timestamp)", ""]
     let body = renderBody(message)
@@ -63,25 +63,28 @@ public struct MarkdownRenderer: Sendable {
       return placeholder(for: message.kind)
     }
 
-    let body = message.body.map { line -> String in
-      if line.isLowConfidence {
-        return "〔识别存疑〕\(line.text)"
-      }
-      return line.text
-    }.joined(separator: "\n")
+    let body = message.body.map(\.text).joined(separator: "\n")
 
     if body.isEmpty {
       return placeholder(for: message.kind)
     }
+    if message.body.contains(where: { $0.isLowConfidence }) {
+      return "〔识别存疑〕\n\(body)"
+    }
     return body
   }
 
-  private func render(_ field: RecognizedField) -> String {
-    guard !field.text.isEmpty else { return "〔识别存疑〕" }
-    if field.isLowConfidence {
-      return "〔识别存疑〕\(field.text)"
-    }
+  private func renderSender(_ field: RecognizedField) -> String {
+    guard !field.text.isEmpty else { return "未知发送者" }
     return field.text
+  }
+
+  private func renderTimestamp(_ field: RecognizedField) -> String {
+    guard !field.text.isEmpty else { return "〔识别存疑〕" }
+    if TimestampParser.match(in: field.text) != nil {
+      return field.text
+    }
+    return field.isLowConfidence ? "〔识别存疑〕\(field.text)" : field.text
   }
 
   private func placeholder(for kind: MessageKind) -> String {

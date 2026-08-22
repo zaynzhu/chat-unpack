@@ -38,9 +38,26 @@ func runTranscriptAssemblerTests(_ suite: inout TestSuite) {
   uncertainAssembler.append(messages: [makeMessage(sender: "测试乙", isPartial: true)], viewportIndex: 1)
   suite.expect(uncertainAssembler.messageCount == 2, "不同昵称的部分消息不能合并")
   suite.expect(
-    uncertainAssembler.transcript.warnings.contains(where: { $0.code == "CU-A001" }),
-    "无法拼接时应标记存疑"
+    !uncertainAssembler.transcript.warnings.contains(where: { $0.code == "CU-A001" }),
+    "相邻的不同消息不应误报拼接存疑"
   )
+
+  var confidenceAssembler = TranscriptAssembler(title: "模拟记录")
+  confidenceAssembler.append(
+    messages: [makeMessage(
+      senderConfidence: 0.30,
+      timestampConfidence: 0.30,
+      bodyConfidence: 0.60
+    )],
+    viewportIndex: 0
+  )
+  suite.expect(confidenceAssembler.lowConfidenceCount == 0, "昵称和合法时间不应增加存疑计数")
+
+  confidenceAssembler.append(
+    messages: [makeMessage(timestamp: "09:52", bodyConfidence: 0.30)],
+    viewportIndex: 1
+  )
+  suite.expect(confidenceAssembler.lowConfidenceCount == 1, "很低置信度正文应增加一次存疑计数")
 
   var finishedAssembler = TranscriptAssembler(title: "模拟记录")
   finishedAssembler.append(messages: [makeMessage()], viewportIndex: 0)

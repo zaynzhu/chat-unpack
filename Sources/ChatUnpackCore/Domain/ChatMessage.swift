@@ -12,7 +12,7 @@ public struct RecognizedField: Sendable, Equatable {
   }
 
   public var isLowConfidence: Bool {
-    confidence < 0.70 && !isUserCorrected
+    confidence < 0.45 && !isUserCorrected
   }
 }
 
@@ -35,7 +35,7 @@ public struct RecognizedLine: Identifiable, Sendable, Equatable {
   }
 
   public var isLowConfidence: Bool {
-    confidence < 0.70 && !isUserCorrected
+    confidence < 0.45 && !isUserCorrected
   }
 }
 
@@ -83,8 +83,7 @@ public struct ChatMessage: Identifiable, Sendable, Equatable {
   }
 
   public var hasLowConfidence: Bool {
-    sender.isLowConfidence
-      || timestamp.isLowConfidence
+    timestamp.text.isEmpty
       || body.contains(where: { $0.isLowConfidence })
   }
 }

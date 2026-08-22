@@ -49,10 +49,6 @@ public struct TranscriptAssembler: Sendable {
         if currentMessages.isEmpty {
           return
         }
-      } else {
-        let warning = ScanWarning.uncertainAssembly()
-        transcript.warnings.append(warning)
-        currentMessages[0].warnings.append(warning)
       }
     }
 
