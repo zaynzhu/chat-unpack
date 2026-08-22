@@ -84,6 +84,6 @@ public struct ChatMessage: Identifiable, Sendable, Equatable {
 
   public var hasLowConfidence: Bool {
     timestamp.text.isEmpty
-      || body.contains(where: { $0.isLowConfidence })
+      || (kind == .text && body.contains(where: { $0.isLowConfidence }))
   }
 }

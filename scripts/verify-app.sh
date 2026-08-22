@@ -32,7 +32,7 @@ fi
 
 SHORT_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_DIR/Contents/Info.plist")"
 BUILD_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP_DIR/Contents/Info.plist")"
-if [[ "$SHORT_VERSION" != "0.1.3" || "$BUILD_VERSION" != "4" ]]; then
+if [[ "$SHORT_VERSION" != "0.1.4" || "$BUILD_VERSION" != "5" ]]; then
   echo "应用版本不符合预期：$SHORT_VERSION ($BUILD_VERSION)" >&2
   exit 1
 fi

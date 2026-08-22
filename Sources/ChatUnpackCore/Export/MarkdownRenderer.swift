@@ -59,6 +59,9 @@ public struct MarkdownRenderer: Sendable {
   }
 
   private func renderBody(_ message: ChatMessage) -> String {
+    if message.kind != .text {
+      return placeholder(for: message.kind)
+    }
     if message.body.isEmpty {
       return placeholder(for: message.kind)
     }

@@ -97,7 +97,7 @@ public struct MessageParser {
       if senderText.isEmpty || timestampText.isEmpty {
         warnings.append(ScanWarning.lowConfidence())
       }
-      if bodyLines.contains(where: { $0.isLowConfidence }) {
+      if kind == .text && bodyLines.contains(where: { $0.isLowConfidence }) {
         warnings.append(ScanWarning.lowConfidence())
       }
 

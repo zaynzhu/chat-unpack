@@ -59,6 +59,13 @@ func runTranscriptAssemblerTests(_ suite: inout TestSuite) {
   )
   suite.expect(confidenceAssembler.lowConfidenceCount == 1, "很低置信度正文应增加一次存疑计数")
 
+  var emojiAssembler = TranscriptAssembler(title: "模拟记录")
+  emojiAssembler.append(
+    messages: [makeMessage(body: ["[表情]"], bodyConfidence: 0.10, kind: .emoji)],
+    viewportIndex: 0
+  )
+  suite.expect(emojiAssembler.lowConfidenceCount == 0, "表情占位符不应增加存疑计数")
+
   var finishedAssembler = TranscriptAssembler(title: "模拟记录")
   finishedAssembler.append(messages: [makeMessage()], viewportIndex: 0)
   finishedAssembler.finish(status: .cancelled, reason: "用户主动取消")

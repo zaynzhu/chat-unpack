@@ -50,4 +50,16 @@ func runMessageParserTests(_ suite: inout TestSuite) {
   ]
   let nested = MessageParser().parse(lines: nestedLines, viewportIndex: 0).first
   suite.expect(nested?.kind == .nestedRecord, "应识别嵌套聊天记录占位符")
+
+  let emojiLines = [
+    makeOCRLine("测试用户", x: 0.10, top: 0.10),
+    makeOCRLine("09:51", x: 0.78, top: 0.10, width: 0.12),
+    makeOCRLine("[表情]", x: 0.10, top: 0.17, confidence: 0.10)
+  ]
+  let emoji = MessageParser().parse(lines: emojiLines, viewportIndex: 0).first
+  suite.expect(emoji?.kind == .emoji, "应识别低置信度表情占位符")
+  suite.expect(
+    emoji?.warnings.contains(where: { $0.code == "CU-O003" }) == false,
+    "已分类的表情占位符不应增加 OCR 存疑警告"
+  )
 }

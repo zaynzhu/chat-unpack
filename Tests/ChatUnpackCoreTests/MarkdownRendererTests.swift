@@ -76,6 +76,15 @@ func runMarkdownRendererTests(_ suite: inout TestSuite) {
   )
   suite.expect(MarkdownRenderer().render(nested).contains("[聊天记录]"), "应输出嵌套记录占位符")
 
+  let emoji = Transcript(
+    title: "模拟聊天记录",
+    status: .complete,
+    messages: [makeMessage(body: ["[表情]"], bodyConfidence: 0.10, kind: .emoji)]
+  )
+  let emojiMarkdown = MarkdownRenderer().render(emoji)
+  suite.expect(emojiMarkdown.contains("[表情]"), "应输出表情占位符")
+  suite.expect(!emojiMarkdown.contains("〔识别存疑〕"), "已分类的表情占位符不应标记存疑")
+
   let incomplete = Transcript(
     title: "模拟聊天记录",
     status: .incomplete,
