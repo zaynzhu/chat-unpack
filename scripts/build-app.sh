@@ -21,6 +21,7 @@ rm -rf "$APP_DIR"
 mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
 cp "$BIN_DIR/ChatUnpackApp" "$APP_DIR/Contents/MacOS/ChatUnpackApp"
 cp "$ROOT_DIR/Resources/Info.plist" "$APP_DIR/Contents/Info.plist"
+cp "$ROOT_DIR/Resources/AppIcon.icns" "$APP_DIR/Contents/Resources/AppIcon.icns"
 
 codesign --force --deep --timestamp=none --sign "$SIGNING_IDENTITY" "$APP_DIR"
 

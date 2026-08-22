@@ -32,8 +32,19 @@ fi
 
 SHORT_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_DIR/Contents/Info.plist")"
 BUILD_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP_DIR/Contents/Info.plist")"
-if [[ "$SHORT_VERSION" != "0.1.4" || "$BUILD_VERSION" != "5" ]]; then
+if [[ "$SHORT_VERSION" != "0.1.5" || "$BUILD_VERSION" != "6" ]]; then
   echo "应用版本不符合预期：$SHORT_VERSION ($BUILD_VERSION)" >&2
+  exit 1
+fi
+
+ICON_FILE="$APP_DIR/Contents/Resources/AppIcon.icns"
+if [[ ! -s "$ICON_FILE" ]]; then
+  echo "应用图标缺失或为空" >&2
+  exit 1
+fi
+ICON_NAME="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$APP_DIR/Contents/Info.plist")"
+if [[ "$ICON_NAME" != "AppIcon" ]]; then
+  echo "应用图标配置不符合预期：$ICON_NAME" >&2
   exit 1
 fi
 
