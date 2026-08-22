@@ -71,9 +71,6 @@ public struct MarkdownRenderer: Sendable {
     if body.isEmpty {
       return placeholder(for: message.kind)
     }
-    if message.body.contains(where: { $0.isLowConfidence }) {
-      return "〔识别存疑〕\n\(body)"
-    }
     return body
   }
 
@@ -84,10 +81,7 @@ public struct MarkdownRenderer: Sendable {
 
   private func renderTimestamp(_ field: RecognizedField) -> String {
     guard !field.text.isEmpty else { return "〔识别存疑〕" }
-    if TimestampParser.match(in: field.text) != nil {
-      return field.text
-    }
-    return field.isLowConfidence ? "〔识别存疑〕\(field.text)" : field.text
+    return field.text
   }
 
   private func placeholder(for kind: MessageKind) -> String {

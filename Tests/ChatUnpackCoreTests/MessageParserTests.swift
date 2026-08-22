@@ -27,6 +27,10 @@ func runMessageParserTests(_ suite: inout TestSuite) {
   if let message = MessageParser().parse(lines: confidenceLines, viewportIndex: 4).first {
     suite.expect(message.body.map(\.text) == ["第一行", "第二行"], "正文应保持行顺序")
     suite.expect(message.body.last?.isLowConfidence == true, "低置信度正文应被标记")
+    suite.expect(
+      !message.warnings.contains(where: { $0.code == "CU-O003" }),
+      "OCR 置信度只能用于内部比较，不能生成用户可见警告"
+    )
     suite.expect(message.sourceViewportIndices == [4], "应记录来源视口")
   } else {
     suite.expect(false, "应解析置信度样本")

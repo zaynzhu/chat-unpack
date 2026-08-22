@@ -30,7 +30,7 @@ struct ResultEditorView: View {
 
       if model.progress.lowConfidenceCount > 0 {
         Label(
-          "仍有 \(model.progress.lowConfidenceCount) 处识别或拼接存疑，请检查后再发送。",
+          "仍有 \(model.progress.lowConfidenceCount) 处结构缺失或拼接存疑，请检查后再发送。",
           systemImage: "exclamationmark.circle"
         )
         .font(.footnote)

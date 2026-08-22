@@ -94,11 +94,8 @@ public struct MessageParser {
 
       let kind = classify(bodyLines.map(\.text).joined(separator: "\n"))
       var warnings: [ScanWarning] = []
-      if senderText.isEmpty || timestampText.isEmpty {
-        warnings.append(ScanWarning.lowConfidence())
-      }
-      if kind == .text && bodyLines.contains(where: { $0.isLowConfidence }) {
-        warnings.append(ScanWarning.lowConfidence())
+      if timestampText.isEmpty {
+        warnings.append(ScanWarning.missingTimestampAnchor())
       }
 
       let firstTop = headerLine.top

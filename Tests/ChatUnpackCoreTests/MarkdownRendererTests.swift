@@ -55,10 +55,9 @@ func runMarkdownRendererTests(_ suite: inout TestSuite) {
     ]
   )
   let veryLowMarkdown = MarkdownRenderer().render(veryLowBody)
-  let markerCount = veryLowMarkdown.components(separatedBy: "〔识别存疑〕").count - 1
-  suite.expect(markerCount == 1, "同一条消息的多行正文只应提示一次")
+  suite.expect(!veryLowMarkdown.contains("〔识别存疑〕"), "不能仅因 OCR 置信度低而添加存疑提示")
   suite.expect(veryLowMarkdown.contains("**虚构昵称** · 09:51"), "昵称和合法时间不应添加存疑前缀")
-  suite.expect(veryLowMarkdown.contains("第一行\n第二行"), "存疑提示不能改变正文")
+  suite.expect(veryLowMarkdown.contains("第一行\n第二行"), "低置信度不能改变正文")
 
   let missingHeader = Transcript(
     title: "模拟聊天记录",
@@ -90,7 +89,7 @@ func runMarkdownRendererTests(_ suite: inout TestSuite) {
     status: .incomplete,
     messages: [makeMessage()],
     warnings: [
-      .lowConfidence(),
+      .missingTimestampAnchor(),
       ScanWarning(code: "CU-STATE", message: "目标窗口已关闭")
     ]
   )

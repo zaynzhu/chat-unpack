@@ -57,7 +57,16 @@ func runTranscriptAssemblerTests(_ suite: inout TestSuite) {
     messages: [makeMessage(timestamp: "09:52", bodyConfidence: 0.30)],
     viewportIndex: 1
   )
-  suite.expect(confidenceAssembler.lowConfidenceCount == 1, "很低置信度正文应增加一次存疑计数")
+  suite.expect(confidenceAssembler.lowConfidenceCount == 0, "纯 OCR 置信度不应增加用户可见的存疑计数")
+
+  var structuralAssembler = TranscriptAssembler(title: "模拟记录")
+  var structuralMessage = makeMessage(timestamp: "")
+  structuralMessage.warnings = [.missingTimestampAnchor()]
+  structuralAssembler.append(
+    messages: [structuralMessage],
+    viewportIndex: 0
+  )
+  suite.expect(structuralAssembler.lowConfidenceCount == 1, "时间锚点缺失仍应增加结构性存疑计数")
 
   var emojiAssembler = TranscriptAssembler(title: "模拟记录")
   emojiAssembler.append(
