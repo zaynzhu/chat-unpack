@@ -1,6 +1,6 @@
 # ChatUnpack Windows v0.1 详细实施计划
 
-> 状态：待确认后实施
+> 状态：编码已获授权；首次构建与运行留待 Windows 实机
 >
 > 目标版本：Windows v0.1.0-preview.1
 >
@@ -18,12 +18,13 @@
 
 当前 macOS 版本已经证明了产品闭环、核心领域模型、跨视口拼接、Markdown 导出和隐私边界；这些经验足以支撑 Windows 实现。Windows 端不能直接复用 Swift 二进制，也不应为了共享代码改用 Electron、Flutter 或其他跨平台 UI 壳。第一版采用独立的 C# / .NET 8 + WPF 原生实现，在行为和测试样例层面与 macOS 对齐。
 
-无 Windows 机器时，本阶段最多可以形成四类可信证据：
+无 Windows 机器时，本阶段最多可以形成三类可信证据：
 
-1. macOS 上对 C# 领域代码的交叉编译和确定性测试。
-2. Windows CI 上的编译、核心测试和 `win-x64` 打包。
-3. 对隐私边界、依赖和网络能力的静态检查。
-4. 完整的 Windows 人工验收手册与虚构 Fixture。
+1. 对代码结构、隐私边界、依赖和网络能力的静态检查。
+2. 现有 macOS Swift 核心回归，证明本次新增目录没有破坏原平台。
+3. 完整的 Windows 构建、测试和人工验收手册与虚构 Fixture。
+
+当前 Mac 不安装 .NET、Windows SDK、虚拟机或其他 Windows 相关开发环境。C# 代码的首次编译、核心测试、WPF 运行和打包全部留到代码提交后，在真实 Windows 11 机器或 Windows CI 上执行。
 
 以下能力在拿到真实 Windows 11 桌面前不能宣称通过：
 
@@ -574,22 +575,18 @@ Fixture 数据只保存在源码中，不读取微信，不复用任何真实截
 
 ## 10. 构建、CI 与交付
 
-### 10.1 本地非 Windows 构建
+### 10.1 当前 Mac 的开发边界
 
-当前 macOS 环境没有 `dotnet`。开始实现前需要安装或提供 .NET 8 SDK，然后使用：
+当前 macOS 环境不安装 `dotnet`、Windows SDK、虚拟机或兼容层，也不在 Mac 上执行 Windows restore、build、test 或 publish。
 
-```bash
-dotnet restore windows/ChatUnpack.Windows.sln
-dotnet build windows/ChatUnpack.Windows.sln \
-  -c Debug \
-  -p:EnableWindowsTargeting=true
-dotnet run \
-  --project windows/tests/ChatUnpack.Core.TestRunner \
-  -c Release \
-  -p:EnableWindowsTargeting=true
-```
+Mac 只执行：
 
-macOS 构建只能证明代码可编译，不能运行 WPF、WinRT 捕获或 Windows OCR。
+- 编辑 C#、XAML、PowerShell、解决方案和项目文件。
+- 对项目引用、文件路径、命名、隐私边界和禁止 API 进行静态审查。
+- 继续运行现有 Swift 核心回归，确保新增 Windows 目录不破坏 macOS。
+- 通过 `git diff --check`、文本搜索和 XML 解析检查可静态验证的内容。
+
+所有 Windows 代码在首次 Windows 构建前保持“未编译、未运行、未验收”状态，交付说明不得省略这三个限定。
 
 ### 10.2 Windows CI
 
@@ -625,7 +622,7 @@ CI 不包含真实微信、截图、Fixture OCR 输出或聊天文本 artifact�
 | 等级 | 环境 | 能证明什么 | 不能证明什么 |
 |---|---|---|---|
 | L0 | 静态审查 | 代码结构、依赖、无网络调用、无数据库/注入实现 | 任何运行行为 |
-| L1 | macOS + .NET SDK | Core 编译、确定性测试、跨语言 Golden | WPF 与 Windows API |
+| L1 | Windows 11 命令行 | Core 编译、确定性测试、跨语言 Golden | WPF 交互、微信、真实 OCR |
 | L2 | Windows CI | Windows 编译、Core 测试、publish 和文件清单 | 交互桌面、微信、真实 OCR |
 | L3 | Windows 11 真实桌面 + FixtureHost | WPF、捕获、OCR、滚动、暂停、导出 | 官方微信兼容性 |
 | L4 | 用户主动准备的无隐私微信样例 | 官方微信闭环和实际 OCR 质量 | 普遍兼容所有微信版本 |
@@ -639,15 +636,12 @@ CI 不包含真实微信、截图、Fixture OCR 输出或聊天文本 artifact�
 swift run --arch arm64 ChatUnpackCoreTestRunner
 swift build -c debug --arch arm64
 
-# Windows Core 交叉构建
-dotnet build windows/ChatUnpack.Windows.sln -c Debug -p:EnableWindowsTargeting=true
-dotnet run --project windows/tests/ChatUnpack.Core.TestRunner -c Release -p:EnableWindowsTargeting=true
-
 # 文档与脚本
 bash -n scripts/*.sh
+git diff --check
 ```
 
-Windows runner：
+Windows 11 实机或 Windows runner：
 
 ```powershell
 dotnet build .\windows\ChatUnpack.Windows.sln -c Debug
@@ -724,8 +718,9 @@ SendKeys
 验证：
 
 - macOS Swift 核心检查继续通过。
-- macOS 上 Windows 解决方案可以 restore/build。
+- 解决方案、项目引用和 XML 结构通过静态检查。
 - 没有第三方运行时包。
+- Windows restore/build 明确留待首次 Windows 验收。
 - 独立提交：`build: 初始化 Windows v0.1 工程`。
 
 ### 阶段 1：C# Core 等价移植
@@ -894,7 +889,6 @@ SendKeys
 - WPF 用户流程和 fake coordinator 完成。
 - FixtureHost、OCR、目标定位、捕获、滚动和协调代码完成。
 - macOS Swift 回归继续通过。
-- macOS 交叉构建通过。
 - Windows CI 的 Debug、Release、Core tests、publish 和 privacy scan 通过。
 - 生成未签名 `win-x64` self-contained ZIP。
 - 验证文档明确标注所有未做的 Windows 真实运行验收。
@@ -912,16 +906,15 @@ SendKeys
 - 运行期间没有网络连接，扫描图像没有落盘。
 - 版本、架构、产物路径、签名状态和已知限制已写入验证文档。
 
-## 16. 实施前需要确认的事项
+## 16. 已确认的实施方式
 
-开始阶段 0 前需要用户确认：
+2026-08-23 已确认：
 
-1. 是否接受第一份 Windows 产物命名为 `v0.1.0-preview.1`，只承诺编译、核心测试和 Windows CI，不把它称为已实测可用版。
-2. 是否同意第一版只支持官方稳定版微信 Windows 4.x，不兼容 3.9.x。
-3. 是否允许在当前 Mac 安装 .NET 8 SDK，用于交叉编译和 C# Core 测试。
-4. 是否同意新增 GitHub Actions Windows 工作流；工作流只有在后续推送分支后才会运行，不包含任何聊天数据。
-
-确认后，从独立分支 `codex/windows-v0.1` 开始，按阶段 0 到阶段 6 逐项开发和原子提交；阶段 7 等有 Windows 机器后再执行。
+1. 当前 Mac 不安装任何 Windows 相关开发环境。
+2. 先在 `codex/windows-v0.1` 分支编写代码并进行静态审查。
+3. Windows 代码在首次 Windows 验收前统一标记为未编译、未运行、未验收。
+4. 代码提交后，在真实 Windows 11 机器上完成首次 restore、build、test 和运行。
+5. `lunara` 只承担边界明确的 Windows 新功能生产代码；测试、失败处理、审查和验收仍由主智能体负责。
 
 ## 17. 官方技术依据
 
@@ -935,4 +928,3 @@ SendKeys
 - [SendInput](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput)
 - [非 Windows 平台构建 Windows 目标](https://learn.microsoft.com/en-us/dotnet/core/tools/sdk-errors/netsdk1100)
 - [.NET SDK 的 EnableWindowsTargeting](https://learn.microsoft.com/en-us/dotnet/core/project-sdk/msbuild-props#enablewindowstargeting)
-
