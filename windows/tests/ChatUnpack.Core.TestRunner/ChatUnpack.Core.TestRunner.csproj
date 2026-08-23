@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>ChatUnpack.Core.TestRunner</AssemblyName>
+    <RootNamespace>ChatUnpack.Core.TestRunner</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ChatUnpack.Core\ChatUnpack.Core.csproj" />
+  </ItemGroup>
+</Project>

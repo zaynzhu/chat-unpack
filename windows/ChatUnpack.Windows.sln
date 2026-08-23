@@ -1,0 +1,39 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChatUnpack.Core", "src\ChatUnpack.Core\ChatUnpack.Core.csproj", "{4C22A4D0-3C0B-4E75-B4D3-B5C3F27E8B0D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChatUnpack.Windows", "src\ChatUnpack.Windows\ChatUnpack.Windows.csproj", "{7AB5BCB4-5A67-4E5B-943D-1A28B6942E62}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChatUnpack.FixtureHost.Windows", "src\ChatUnpack.FixtureHost.Windows\ChatUnpack.FixtureHost.Windows.csproj", "{7D9A37A4-7B17-4BF2-A61A-9A11E31CB6B2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChatUnpack.Core.TestRunner", "tests\ChatUnpack.Core.TestRunner\ChatUnpack.Core.TestRunner.csproj", "{6E4F8F99-07E5-4DA9-B2A3-4DDF8BB1F11D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4C22A4D0-3C0B-4E75-B4D3-B5C3F27E8B0D}.Debug|x64.ActiveCfg = Debug|x64
+		{4C22A4D0-3C0B-4E75-B4D3-B5C3F27E8B0D}.Debug|x64.Build.0 = Debug|x64
+		{4C22A4D0-3C0B-4E75-B4D3-B5C3F27E8B0D}.Release|x64.ActiveCfg = Release|x64
+		{4C22A4D0-3C0B-4E75-B4D3-B5C3F27E8B0D}.Release|x64.Build.0 = Release|x64
+		{7AB5BCB4-5A67-4E5B-943D-1A28B6942E62}.Debug|x64.ActiveCfg = Debug|x64
+		{7AB5BCB4-5A67-4E5B-943D-1A28B6942E62}.Debug|x64.Build.0 = Debug|x64
+		{7AB5BCB4-5A67-4E5B-943D-1A28B6942E62}.Release|x64.ActiveCfg = Release|x64
+		{7AB5BCB4-5A67-4E5B-943D-1A28B6942E62}.Release|x64.Build.0 = Release|x64
+		{7D9A37A4-7B17-4BF2-A61A-9A11E31CB6B2}.Debug|x64.ActiveCfg = Debug|x64
+		{7D9A37A4-7B17-4BF2-A61A-9A11E31CB6B2}.Debug|x64.Build.0 = Debug|x64
+		{7D9A37A4-7B17-4BF2-A61A-9A11E31CB6B2}.Release|x64.ActiveCfg = Release|x64
+		{7D9A37A4-7B17-4BF2-A61A-9A11E31CB6B2}.Release|x64.Build.0 = Release|x64
+		{6E4F8F99-07E5-4DA9-B2A3-4DDF8BB1F11D}.Debug|x64.ActiveCfg = Debug|x64
+		{6E4F8F99-07E5-4DA9-B2A3-4DDF8BB1F11D}.Debug|x64.Build.0 = Debug|x64
+		{6E4F8F99-07E5-4DA9-B2A3-4DDF8BB1F11D}.Release|x64.ActiveCfg = Release|x64
+		{6E4F8F99-07E5-4DA9-B2A3-4DDF8BB1F11D}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

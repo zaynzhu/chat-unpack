@@ -5,3 +5,6 @@ dist/
 *.xcuserstate
 DerivedData/
 xcuserdata/
+windows/**/bin/
+windows/**/obj/
+windows/artifacts/
