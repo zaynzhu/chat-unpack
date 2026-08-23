@@ -130,4 +130,31 @@ func runMessageParserTests(_ suite: inout TestSuite) {
   let validShortText = MessageParser().parse(lines: validShortTextLines, viewportIndex: 0).first
   suite.expect(validShortText?.kind == .text, "低置信度不能单独成为删除短文本的理由")
   suite.expect(validShortText?.body.map(\.text) == ["收到"], "正常中文短消息必须保留")
+
+  let malformedDateSenderLines = [
+    makeOCRLine("2026至8日21日", x: 0.10, top: 0.10),
+    makeOCRLine("10:11", x: 0.78, top: 0.10, width: 0.12),
+    makeOCRLine("模拟正文", x: 0.10, top: 0.17)
+  ]
+  let malformedDateSender = MessageParser().parse(
+    lines: malformedDateSenderLines,
+    viewportIndex: 0
+  ).first
+  suite.expect(malformedDateSender?.sender.text.isEmpty == true, "残缺日期不能被当作发言人")
+
+  let alternativeSenderLines = [
+    makeOCRLine("@", x: 0.10, top: 0.10, alternatives: ["模拟昵称"]),
+    makeOCRLine("10:12", x: 0.78, top: 0.10, width: 0.12),
+    makeOCRLine("模拟正文", x: 0.10, top: 0.17)
+  ]
+  let alternativeSender = MessageParser().parse(lines: alternativeSenderLines, viewportIndex: 0).first
+  suite.expect(alternativeSender?.sender.text == "模拟昵称", "符号主候选应回退到有效昵称备选")
+
+  let symbolSenderLines = [
+    makeOCRLine("◎", x: 0.10, top: 0.10),
+    makeOCRLine("10:13", x: 0.78, top: 0.10, width: 0.12),
+    makeOCRLine("模拟正文", x: 0.10, top: 0.17)
+  ]
+  let symbolSender = MessageParser().parse(lines: symbolSenderLines, viewportIndex: 0).first
+  suite.expect(symbolSender?.sender.text.isEmpty == true, "纯符号不能作为发言人")
 }

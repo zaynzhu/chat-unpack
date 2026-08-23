@@ -55,6 +55,7 @@ func makeOCRLine(
   width: CGFloat = 0.2,
   height: CGFloat = 0.04,
   confidence: Float = 0.99,
+  alternatives: [String] = [],
   viewportIndex: Int = 0
 ) -> OCRLine {
   OCRLine(
@@ -66,6 +67,7 @@ func makeOCRLine(
       width: width,
       height: height
     ),
+    alternatives: alternatives,
     viewportIndex: viewportIndex
   )
 }

@@ -74,6 +74,7 @@ public struct TranscriptAssembler: Sendable {
 
   public mutating func finish(status: TranscriptStatus, reason: String? = nil) {
     canonicalizeSenders()
+    trimTrailingHeaderArtifacts()
     transcript.status = status
     if let reason, !reason.isEmpty {
       transcript.warnings.append(ScanWarning(code: "CU-STATE", message: reason))
@@ -151,6 +152,63 @@ public struct TranscriptAssembler: Sendable {
       longest = current
     }
     return longest.isEmpty ? nil : longest
+  }
+
+  private mutating func trimTrailingHeaderArtifacts() {
+    let knownSenders = Set(transcript.messages.flatMap { message -> [String] in
+      let text = message.sender.text.trimmingCharacters(in: .whitespacesAndNewlines)
+      guard !text.isEmpty else { return [] }
+      if let core = longestHanRun(in: text), core.count >= 2 {
+        return [text, core]
+      }
+      return [text]
+    })
+    guard !knownSenders.isEmpty else { return }
+
+    for index in transcript.messages.indices {
+      let body = transcript.messages[index].body
+      guard body.count >= 2 else { continue }
+      let searchStart = max(0, body.count - 4)
+
+      for markerIndex in searchStart..<(body.count - 1) {
+        guard isSymbolOnly(body[markerIndex].text) else { continue }
+        let suffix = body[(markerIndex + 1)...]
+        guard suffix.count <= 3,
+              suffix.allSatisfy({ isCompactHeaderText($0.text) }),
+              suffix.contains(where: { matchesKnownSender($0.text, knownSenders: knownSenders) }) else {
+          continue
+        }
+
+        transcript.messages[index].body.removeSubrange(markerIndex...)
+        if transcript.messages[index].body.isEmpty,
+           transcript.messages[index].kind == .text {
+          transcript.messages[index].kind = .unknownNonText
+        }
+        break
+      }
+    }
+  }
+
+  private func isSymbolOnly(_ text: String) -> Bool {
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty, trimmed.count <= 3 else { return false }
+    return !trimmed.unicodeScalars.contains(where: { CharacterSet.alphanumerics.contains($0) })
+  }
+
+  private func isCompactHeaderText(_ text: String) -> Bool {
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty, trimmed.count <= 16 else { return false }
+    guard trimmed.rangeOfCharacter(from: .whitespacesAndNewlines) == nil else { return false }
+    return trimmed.rangeOfCharacter(from: CharacterSet(charactersIn: "。！？!?；;")) == nil
+  }
+
+  private func matchesKnownSender(_ text: String, knownSenders: Set<String>) -> Bool {
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    if knownSenders.contains(trimmed) {
+      return true
+    }
+    guard let core = longestHanRun(in: trimmed), core.count >= 2 else { return false }
+    return knownSenders.contains(core)
   }
 
   private func sameUnanchoredFragment(_ lhs: ChatMessage, _ rhs: ChatMessage) -> Bool {

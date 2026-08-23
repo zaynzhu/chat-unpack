@@ -173,4 +173,32 @@ func runTranscriptAssemblerTests(_ suite: inout TestSuite) {
     Array(canonicalSenders.suffix(distinctSenders.count)) == distinctSenders,
     "证据不足的相似昵称必须保持原样"
   )
+
+  var pollutedBodyAssembler = TranscriptAssembler(title: "模拟记录")
+  pollutedBodyAssembler.append(
+    messages: [
+      makeMessage(sender: "模拟甲", body: ["正文", "*", "gmi模拟乙", "云舟"]),
+      makeMessage(sender: "云舟", timestamp: "11:20", body: ["下一条正文"])
+    ],
+    viewportIndex: 0
+  )
+  pollutedBodyAssembler.finish(status: .complete)
+  suite.expect(
+    pollutedBodyAssembler.transcript.messages.first?.body.map(\.text) == ["正文"],
+    "尾部头像符号与昵称残片不能污染正文"
+  )
+
+  var legitimateBodyAssembler = TranscriptAssembler(title: "模拟记录")
+  legitimateBodyAssembler.append(
+    messages: [
+      makeMessage(sender: "模拟甲", body: ["正文", "云舟"]),
+      makeMessage(sender: "云舟", timestamp: "11:21", body: ["下一条正文"])
+    ],
+    viewportIndex: 0
+  )
+  legitimateBodyAssembler.finish(status: .complete)
+  suite.expect(
+    legitimateBodyAssembler.transcript.messages.first?.body.map(\.text) == ["正文", "云舟"],
+    "没有头像符号证据时不得删除与昵称相同的真实正文"
+  )
 }

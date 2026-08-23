@@ -176,8 +176,8 @@ public struct MessageParser {
         return nil
       }
       guard TimestampParser.match(in: line.text) == nil else { return nil }
-      guard isPlausibleSender(line.text) else { return nil }
-      return SenderCandidate(lineIndex: index, line: line)
+      guard let senderLine = senderLine(from: line) else { return nil }
+      return SenderCandidate(lineIndex: index, line: senderLine)
     }
 
     return candidates.max { lhs, rhs in
@@ -190,7 +190,37 @@ public struct MessageParser {
   private func isPlausibleSender(_ text: String) -> Bool {
     let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty, trimmed.count <= 32 else { return false }
-    return trimmed.rangeOfCharacter(from: CharacterSet(charactersIn: "。！？!?；;\n")) == nil
+    guard trimmed.rangeOfCharacter(from: CharacterSet(charactersIn: "。！？!?；;\n")) == nil else {
+      return false
+    }
+    guard !isDateLike(trimmed) else { return false }
+    return trimmed.unicodeScalars.contains(where: { CharacterSet.alphanumerics.contains($0) })
+  }
+
+  private func senderLine(from line: OCRLine) -> OCRLine? {
+    let candidates = [line.text] + line.alternatives
+    guard let text = candidates.first(where: { isPlausibleSender($0) }) else {
+      return nil
+    }
+    guard text != line.text else { return line }
+    return OCRLine(
+      text: text,
+      confidence: line.confidence,
+      boundingBox: line.boundingBox,
+      alternatives: line.alternatives,
+      viewportIndex: line.viewportIndex
+    )
+  }
+
+  private func isDateLike(_ text: String) -> Bool {
+    let numberRuns = text.split(whereSeparator: { !$0.isNumber })
+    guard numberRuns.count >= 3,
+          numberRuns[0].count == 4,
+          let year = Int(numberRuns[0]),
+          (1900...2100).contains(year) else {
+      return false
+    }
+    return true
   }
 
   private func isLikelyVisualNoise(_ lines: [OCRLine]) -> Bool {
