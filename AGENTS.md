@@ -2,9 +2,9 @@
 
 ## 项目定位
 
-ChatUnpack 是个人自用、完全离线的 macOS 工具：只在用户主动确认后捕获一个微信合并聊天记录窗口，使用系统 OCR 生成 Markdown，由用户自行检查、复制、保存和发送。
+ChatUnpack 是个人自用、完全离线的桌面工具：只在用户主动确认后捕获一个微信合并聊天记录窗口，使用系统本地 OCR 生成 Markdown，由用户自行检查、复制、保存和发送。
 
-当前实现仅支持 macOS 13+、Apple Silicon（`arm64`）和官方微信。Windows 版不在本仓库当前范围内。
+当前已验证实现支持 macOS 13+、Apple Silicon（`arm64`）和官方微信。Windows 11 23H2+、x64、官方微信 4.x 的独立 C# / .NET 8 + WPF 客户端正在开发；在真实 Windows 首次构建与运行前，所有 Windows 能力均标记为未编译、未运行、未验收。
 
 ## 隐私红线
 
@@ -32,6 +32,7 @@ ChatUnpack 是个人自用、完全离线的 macOS 工具：只在用户主动�
 - `Sources/ChatUnpackFixtureHost/`：200 条完全虚构的本地模拟记录窗口。
 - `Tests/ChatUnpackCoreTests/`：无第三方依赖的确定性核心检查。
 - `Resources/Info.plist`：应用版本、bundle identifier、最低系统版本和权限说明。
+- `windows/`：独立的 C# / .NET 8 + WPF Windows 客户端、FixtureHost、核心检查和 PowerShell 脚本；不与 Swift 代码共享二进制。
 
 ## 开发与验证
 
@@ -50,9 +51,13 @@ plutil -lint Resources/Info.plist
 - 重建 `dist/ChatUnpack.app` 前只能停止该路径下正在运行的 ChatUnpack 进程，不得关闭或操作微信。
 - `dist/`、`.build/` 和真实导出文件不进入 Git。
 - 每次改动至少运行相关核心检查；涉及应用或打包时同时验证 Debug、Release、bundle 架构和签名。
+- 当前 Mac 不安装 .NET、Windows SDK、虚拟机或其他 Windows 相关开发环境，不在 Mac 上声称 Windows restore、build、test、publish 或运行通过。
+- Windows 代码先做静态审查；首次构建、核心检查、WPF 运行、FixtureHost 和官方微信验收必须在真实 Windows 11 x64 或 Windows CI 上完成并记录。
+- Windows 真实微信验收仍由用户主动触发；自动化只使用 Windows FixtureHost 的虚构数据。
 
 ## 文档入口
 
 - [README.md](README.md)：个人使用、构建、权限和当前限制。
 - [docs/DESIGN.md](docs/DESIGN.md)：产品边界、隐私不变量和技术设计。
 - [docs/VALIDATION.md](docs/VALIDATION.md)：当前实现、验证证据、已知限制和交接状态。
+- [docs/WINDOWS-V0.1-PLAN.md](docs/WINDOWS-V0.1-PLAN.md)：Windows v0.1 范围、架构、阶段、验证层级和实机验收计划。

@@ -2,11 +2,15 @@
 
 > 当前应用版本：macOS v0.1.11（build 12）
 >
-> 支持平台：macOS 13+、Apple Silicon（`arm64`）
+> 已验证平台：macOS 13+、Apple Silicon（`arm64`）
+>
+> 开发中平台：Windows 11 23H2+、x64；尚未编译、运行或验收
 >
 > 状态日期：2026-08-23
 
 本文档只记录当前 checkout 能证明的实现、验证证据、已知限制和剩余验收，不充当版本流水账。产品和隐私约束见 [DESIGN.md](DESIGN.md)。
+
+Windows v0.1 的代码开发边界、阶段和验收层级见 [WINDOWS-V0.1-PLAN.md](WINDOWS-V0.1-PLAN.md)。当前 Mac 不安装 Windows 开发环境，因此任何 Windows 源码在首次 Windows 11 构建前都不能记为已实现或已验证。
 
 ## 1. 当前已实现
 
@@ -103,7 +107,9 @@ rg -n -i 'URLSession|URLRequest|NWConnection|socket|upload|telemetry|sqlite|mach
 - 开机自启在不同应用位置和系统设置状态下的完整验证。
 - 完全缺失昵称 OCR 时的身份恢复；当前只能输出“未知发言人”。
 - 图片、表情、语音和视频的可靠视觉分类；当前无可靠信号时输出通用非文字类型。
-- Windows x64 原生客户端。
+- Windows x64 原生客户端的首次 restore、Debug/Release 构建、核心检查和 publish。
+- Windows WPF、FixtureHost、系统 OCR、单窗口捕获、滚动、暂停和导出的真实桌面验收。
+- 官方微信 Windows 4.x 的进程身份、窗口结构、消息区域和滚动行为校准。
 
 ## 7. 已知风险
 

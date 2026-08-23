@@ -1,10 +1,12 @@
 # ChatUnpack
 
-ChatUnpack 是一个个人自用的 macOS 离线工具：把你主动打开的合并聊天记录整理成带消息序号、明确字段和类型的 Markdown，之后由你自己编辑、复制、保存并发送给 Hermes Bot。
+ChatUnpack 是一个个人自用的完全离线桌面工具：把你主动打开的合并聊天记录整理成带消息序号、明确字段和类型的 Markdown，之后由你自己编辑、复制、保存并发送给 Hermes Bot。
 
 复制内容超过 1800 个字符时，应用会优先沿消息边界拆分，并通过按钮逐段写入剪贴板；每段都带有序号和等待提示，最后一段明确通知 Hermes 可以统一处理。保存 Markdown 始终保留完整文件。
 
-当前版本为 macOS v0.1.11（build 12），支持 macOS 13 及以上、Apple Silicon。Windows 版本不在本仓库当前阶段内。
+当前已验证版本为 macOS v0.1.11（build 12），支持 macOS 13 及以上、Apple Silicon。Windows 11 x64 原生客户端已进入 v0.1 开发阶段，采用 C#、.NET 8 和 WPF；当前 Mac 不安装 Windows 开发环境，因此 Windows 代码在真实 Windows 首次构建与运行前统一标记为未编译、未运行、未验收。
+
+Windows 的详细范围和验证门槛见 [Windows v0.1 实施计划](docs/WINDOWS-V0.1-PLAN.md)。
 
 ## 使用流程
 
@@ -28,6 +30,8 @@ ChatUnpack 不会替你选择微信消息、打开聊天记录卡片或发送内
 真实微信验收必须由用户准备无隐私的合并记录，并在每次验收前明确确认。开发和模拟测试使用本仓库提供的虚构数据，不使用用户截图、昵称、电话或正文。
 
 ## 本地构建
+
+以下命令只用于当前已验证的 macOS 客户端。
 
 需要 macOS 13+、Apple Silicon、Swift 6 和 Xcode Command Line Tools。仓库不依赖第三方 Swift Package、Node.js 或 Homebrew 运行时。
 
@@ -69,7 +73,9 @@ open dist/ChatUnpack.app
 
 SwiftUI 界面、菜单栏与快捷键、设置、导出、单窗口内存捕获、Vision OCR、自动滚动、跨屏拼接、Markdown 分段复制和本地稳定签名均已接入。核心逻辑当前通过 121 项确定性检查，v0.1.11 的 Debug、Release、arm64 bundle 和签名均已验证。
 
-用户已经自行进行过真实窗口试用并反馈结构问题；开发自动化没有读取或操作真实微信。正式的 200 条 FixtureHost 端到端扫描、性能目标和媒体视觉分类仍未完成验收，详见 [验证与交接](docs/VALIDATION.md)。
+用户已经自行进行过 macOS 真实窗口试用并反馈结构问题；开发自动化没有读取或操作真实微信。正式的 200 条 macOS FixtureHost 端到端扫描、性能目标和媒体视觉分类仍未完成验收。
+
+Windows v0.1 当前只处于代码开发阶段。首次 restore、build、核心检查、WPF 运行、FixtureHost 扫描和官方微信兼容性都必须在 Windows 11 x64 上完成，详见 [验证与交接](docs/VALIDATION.md)。
 
 ## 当前限制
 
@@ -77,3 +83,4 @@ SwiftUI 界面、菜单栏与快捷键、设置、导出、单窗口内存捕获
 - 只有可见文字信号足够明确时才区分图片、语音、视频等类型，否则输出通用非文字占位符。
 - 微信界面变化可能影响时间锚点、昵称和正文边界，发送前仍需人工检查。
 - 应用不保存扫描历史，也不提供自动更新或公开分发安装器。
+- Windows 客户端尚未完成真实 Windows 构建和运行验收，不能作为当前可用版本交付。

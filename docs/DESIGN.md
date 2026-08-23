@@ -4,7 +4,7 @@
 >
 > 首要平台：macOS 13 及以上，Apple Silicon
 >
-> 后续平台：Windows 11 23H2 及以上，x64
+> 并行开发平台：Windows 11 23H2 及以上，x64；详细计划见 [WINDOWS-V0.1-PLAN.md](WINDOWS-V0.1-PLAN.md)
 >
 > 使用范围：个人自用
 >
@@ -77,7 +77,7 @@ v0.1 不包含以下功能：
 - 不保留历史记录。
 - 不做账号系统、云同步、团队协作或公开分发。
 - 不做 Intel Mac 兼容。
-- 不在 v0.1 中实现 Windows 客户端。
+- macOS v0.1 不混入 Windows 平台代码；Windows 客户端在独立目录按单独的 v0.1 计划实现。
 
 ## 3. 术语
 
@@ -107,12 +107,14 @@ macOS v0.1：
 - 明暗主题都应支持。
 - 窗口可位于任意显示器，但必须完整落在同一块显示器内。
 
-Windows 后续版本：
+Windows v0.1 开发目标：
 
 - Windows 11 23H2 及以上。
 - 仅 x64。
 - 采用独立的 C# / .NET 8 + WPF 原生实现。
 - 不与 macOS 共用 Electron、Flutter 或其他跨平台 UI 壳。
+- 当前 Mac 不安装 Windows 开发环境；首次构建、运行和验收留待真实 Windows 11 x64。
+- Windows 平台的模块、里程碑和证据等级以 [WINDOWS-V0.1-PLAN.md](WINDOWS-V0.1-PLAN.md) 为准。
 
 ### 4.2 内容类型
 
