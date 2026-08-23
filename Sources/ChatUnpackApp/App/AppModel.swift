@@ -179,6 +179,8 @@ public final class AppModel: ObservableObject {
   @Published public var markdownText = ""
   @Published public var userMessage: String?
   @Published public var settings: AppSettings
+  @Published public private(set) var nextCopyPartIndex = 0
+  @Published public private(set) var copyPartCount = 0
 
   public let settingsStore: SettingsStore
   public let hotKeyService: HotKeyService
@@ -187,6 +189,9 @@ public final class AppModel: ObservableObject {
 
   private let captureService: CaptureServiceProtocol
   private let markdownRenderer = MarkdownRenderer()
+  private let markdownChunker = MarkdownChunker()
+  private var copyParts: [String] = []
+  private var copySource = ""
   private var task: Task<Void, Never>?
 
   public init(captureService: CaptureServiceProtocol = UnavailableCaptureService()) {
@@ -294,12 +299,42 @@ public final class AppModel: ObservableObject {
   }
 
   public func copyMarkdown() {
+    if copySource != markdownText
+      || copyParts.isEmpty
+      || nextCopyPartIndex >= copyParts.count {
+      prepareCopyParts()
+    }
+
+    guard copyParts.indices.contains(nextCopyPartIndex) else { return }
+    let partIndex = nextCopyPartIndex
     do {
-      try clipboardService.copy(markdownText)
-      userMessage = "Markdown 已复制到剪贴板。"
+      try clipboardService.copy(copyParts[partIndex])
+      nextCopyPartIndex += 1
+      if copyParts.count == 1 {
+        userMessage = "Markdown 已复制到剪贴板。"
+      } else if nextCopyPartIndex < copyParts.count {
+        userMessage = "已复制第 \(partIndex + 1)/\(copyParts.count) 段，发送后继续复制下一段。"
+      } else {
+        userMessage = "第 \(copyParts.count)/\(copyParts.count) 段已复制，全部分段复制完成。"
+      }
     } catch {
       userMessage = error.localizedDescription
     }
+  }
+
+  public var copyButtonTitle: String {
+    if copySource != markdownText || copyParts.isEmpty {
+      return markdownText.count > markdownChunker.maximumCharacters
+        ? "开始分段复制"
+        : "复制 Markdown"
+    }
+    if copyParts.count == 1 {
+      return "复制 Markdown"
+    }
+    if nextCopyPartIndex >= copyParts.count {
+      return "重新复制分段"
+    }
+    return "复制第 \(nextCopyPartIndex + 1)/\(copyParts.count) 段"
   }
 
   public func saveMarkdown() {
@@ -319,9 +354,24 @@ public final class AppModel: ObservableObject {
     task = nil
     transcript = nil
     markdownText = ""
+    resetCopyParts()
     target = nil
     userMessage = nil
     state = .idle
+  }
+
+  private func prepareCopyParts() {
+    copySource = markdownText
+    copyParts = markdownChunker.split(markdownText)
+    copyPartCount = copyParts.count
+    nextCopyPartIndex = 0
+  }
+
+  private func resetCopyParts() {
+    copySource = ""
+    copyParts = []
+    copyPartCount = 0
+    nextCopyPartIndex = 0
   }
 
   public func refreshPermissions() {

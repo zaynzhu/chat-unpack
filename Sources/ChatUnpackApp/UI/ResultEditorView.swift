@@ -38,7 +38,7 @@ struct ResultEditorView: View {
       }
 
       HStack {
-        Button("复制 Markdown") {
+        Button(model.copyButtonTitle) {
           model.copyMarkdown()
         }
         .buttonStyle(.borderedProminent)
