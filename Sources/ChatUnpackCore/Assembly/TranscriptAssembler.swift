@@ -174,8 +174,15 @@ public struct TranscriptAssembler: Sendable {
         guard isSymbolOnly(body[markerIndex].text) else { continue }
         let suffix = body[(markerIndex + 1)...]
         guard suffix.count <= 3,
-              suffix.allSatisfy({ isCompactHeaderText($0.text) }),
-              suffix.contains(where: { matchesKnownSender($0.text, knownSenders: knownSenders) }) else {
+              suffix.allSatisfy({ isCompactHeaderText($0.text) }) else {
+          continue
+        }
+        let matchesKnown = suffix.contains(where: {
+          matchesKnownSender($0.text, knownSenders: knownSenders)
+        })
+        let isSingleNoisySender = suffix.count == 1
+          && isLikelyNoisySenderArtifact(suffix[suffix.startIndex])
+        guard matchesKnown || isSingleNoisySender else {
           continue
         }
 
@@ -200,6 +207,18 @@ public struct TranscriptAssembler: Sendable {
     guard !trimmed.isEmpty, trimmed.count <= 16 else { return false }
     guard trimmed.rangeOfCharacter(from: .whitespacesAndNewlines) == nil else { return false }
     return trimmed.rangeOfCharacter(from: CharacterSet(charactersIn: "。！？!?；;")) == nil
+  }
+
+  private func isLikelyNoisySenderArtifact(_ line: RecognizedLine) -> Bool {
+    let trimmed = line.text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard line.confidence < 0.65, (5...16).contains(trimmed.count) else { return false }
+    let latinCount = trimmed.unicodeScalars.reduce(into: 0) { count, scalar in
+      if (65...90).contains(scalar.value) || (97...122).contains(scalar.value) {
+        count += 1
+      }
+    }
+    let hasHan = trimmed.unicodeScalars.contains(where: { $0.properties.isIdeographic })
+    return latinCount >= 4 && hasHan
   }
 
   private func matchesKnownSender(_ text: String, knownSenders: Set<String>) -> Bool {

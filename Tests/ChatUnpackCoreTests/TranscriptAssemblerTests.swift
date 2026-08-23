@@ -188,6 +188,33 @@ func runTranscriptAssemblerTests(_ suite: inout TestSuite) {
     "尾部头像符号与昵称残片不能污染正文"
   )
 
+  var singlePollutedBodyAssembler = TranscriptAssembler(title: "模拟记录")
+  singlePollutedBodyAssembler.append(
+    messages: [makeMessage(
+      sender: "模拟甲",
+      body: ["正文", "*", "qtest云"],
+      bodyConfidence: 0.30
+    )],
+    viewportIndex: 0
+  )
+  singlePollutedBodyAssembler.finish(status: .complete)
+  suite.expect(
+    singlePollutedBodyAssembler.transcript.messages.first?.body.map(\.text) == ["正文"],
+    "低置信度的单个混合字符昵称残片也不能污染正文"
+  )
+
+  var highConfidenceMixedBodyAssembler = TranscriptAssembler(title: "模拟记录")
+  highConfidenceMixedBodyAssembler.append(
+    messages: [makeMessage(sender: "模拟甲", body: ["正文", "*", "hello云"])],
+    viewportIndex: 0
+  )
+  highConfidenceMixedBodyAssembler.finish(status: .complete)
+  suite.expect(
+    highConfidenceMixedBodyAssembler.transcript.messages.first?.body.map(\.text)
+      == ["正文", "*", "hello云"],
+    "高置信度混合文本不能仅因形态相似被删除"
+  )
+
   var legitimateBodyAssembler = TranscriptAssembler(title: "模拟记录")
   legitimateBodyAssembler.append(
     messages: [
