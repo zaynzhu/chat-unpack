@@ -1,2 +1,13 @@
-Console.Error.WriteLine("Windows 核心检查尚未加入，当前运行不能视为通过。");
-return 1;
+using ChatUnpack.Core.TestRunner;
+
+var suite = new TestSuite();
+
+TimestampParserTests.Run(suite);
+ScrollPositionTests.Run(suite);
+MessageParserTests.Run(suite);
+OverlapMatcherTests.Run(suite);
+TranscriptAssemblerTests.Run(suite);
+MarkdownRendererTests.Run(suite);
+MarkdownChunkerTests.Run(suite);
+
+return suite.Finish();
