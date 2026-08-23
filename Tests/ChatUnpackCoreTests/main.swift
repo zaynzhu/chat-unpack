@@ -6,5 +6,6 @@ runMessageParserTests(&suite)
 runOverlapMatcherTests(&suite)
 runTranscriptAssemblerTests(&suite)
 runMarkdownRendererTests(&suite)
+runMarkdownChunkerTests(&suite)
 
 suite.finish()
