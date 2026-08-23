@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12.0</LangVersion>
     <AssemblyName>ChatUnpack.Core</AssemblyName>
     <RootNamespace>ChatUnpack.Core</RootNamespace>
     <IsPackable>false</IsPackable>
