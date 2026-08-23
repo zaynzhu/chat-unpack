@@ -1,6 +1,6 @@
 # ChatUnpack
 
-ChatUnpack 是一个个人自用的 macOS 离线工具：把你主动打开的合并聊天记录整理成可编辑、可复制、可保存的 Markdown，之后由你自己发送给 Hermes Bot。
+ChatUnpack 是一个个人自用的 macOS 离线工具：把你主动打开的合并聊天记录整理成带消息序号、明确字段和类型的 Markdown，之后由你自己编辑、复制、保存并发送给 Hermes Bot。
 
 当前首版优先实现 macOS 13 及以上、Apple Silicon。Windows 版本不在本仓库当前阶段内。
 
