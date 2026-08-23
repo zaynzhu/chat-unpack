@@ -1,36 +1,395 @@
 <Window x:Class="ChatUnpack.Windows.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:ChatUnpack.Windows"
         Title="ChatUnpack Windows v0.1"
-        Width="720"
-        Height="420"
-        MinWidth="560"
-        MinHeight="320"
+        Width="900"
+        Height="760"
+        MinWidth="720"
+        MinHeight="560"
         WindowStartupLocation="CenterScreen">
-  <Grid Margin="36">
+  <Window.Resources>
+    <Style x:Key="IdlePanelStyle" TargetType="Grid">
+      <Setter Property="Visibility" Value="Collapsed" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding State}" Value="{x:Static local:AppState.Idle}">
+          <Setter Property="Visibility" Value="Visible" />
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+    <Style x:Key="ConfirmingTargetPanelStyle" TargetType="Grid">
+      <Setter Property="Visibility" Value="Collapsed" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding State}" Value="{x:Static local:AppState.ConfirmingTarget}">
+          <Setter Property="Visibility" Value="Visible" />
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+    <Style x:Key="CountdownPanelStyle" TargetType="Grid">
+      <Setter Property="Visibility" Value="Collapsed" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding State}" Value="{x:Static local:AppState.Countdown}">
+          <Setter Property="Visibility" Value="Visible" />
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+    <Style x:Key="ScanningPanelStyle" TargetType="Grid">
+      <Setter Property="Visibility" Value="Collapsed" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding State}" Value="{x:Static local:AppState.Scanning}">
+          <Setter Property="Visibility" Value="Visible" />
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+    <Style x:Key="PausedPanelStyle" TargetType="Grid">
+      <Setter Property="Visibility" Value="Collapsed" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding State}" Value="{x:Static local:AppState.Paused}">
+          <Setter Property="Visibility" Value="Visible" />
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+    <Style x:Key="ResultPanelStyle" TargetType="Grid">
+      <Setter Property="Visibility" Value="Collapsed" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding State}" Value="{x:Static local:AppState.ResultEditing}">
+          <Setter Property="Visibility" Value="Visible" />
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+    <Style x:Key="ErrorPanelStyle" TargetType="Grid">
+      <Setter Property="Visibility" Value="Collapsed" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding State}" Value="{x:Static local:AppState.Error}">
+          <Setter Property="Visibility" Value="Visible" />
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+  </Window.Resources>
+
+  <Grid Background="#FFF8F8F8">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
-      <RowDefinition Height="24" />
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
 
-    <TextBlock Grid.Row="0"
-               FontSize="28"
-               FontWeight="SemiBold"
-               Foreground="#202124"
-               Text="ChatUnpack Windows" />
+    <Border Grid.Row="0"
+            Margin="20,20,20,0"
+            Padding="18"
+            Background="#FFE7F0FF"
+            BorderBrush="#FFB7CBEA"
+            BorderThickness="1"
+            CornerRadius="10">
+      <StackPanel>
+        <TextBlock FontSize="22"
+                   FontWeight="SemiBold"
+                   Foreground="#202124"
+                   Text="ChatUnpack Windows v0.1" />
+        <TextBlock Margin="0,8,0,0"
+                   FontSize="15"
+                   FontWeight="SemiBold"
+                   Foreground="#173B67"
+                   Text="{Binding PreviewNotice}"
+                   TextWrapping="Wrap" />
+        <TextBlock Margin="0,6,0,0"
+                   Foreground="#3C4A5C"
+                   Text="{Binding PrivacyNotice}"
+                   TextWrapping="Wrap" />
+      </StackPanel>
+    </Border>
 
-    <StackPanel Grid.Row="2" VerticalAlignment="Center">
-      <TextBlock FontSize="18"
-                 FontWeight="SemiBold"
-                 Foreground="#202124"
-                 Text="Windows v0.1 开发预览版，尚未在 Windows 构建/运行"
-                 TextWrapping="Wrap" />
-      <TextBlock Margin="0,16,0,0"
-                 FontSize="14"
-                 Foreground="#5F6368"
-                 Text="当前阶段仅建立 Windows 工程壳；捕获、OCR、滚动和导出功能将在后续阶段实现。"
-                 TextWrapping="Wrap" />
-    </StackPanel>
+    <Grid Grid.Row="1" Margin="20">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
+
+      <DockPanel Grid.Row="0" Margin="4,18,4,12">
+        <TextBlock FontSize="18"
+                   FontWeight="SemiBold"
+                   Foreground="#202124"
+                   Text="{Binding StateTitle}" />
+        <TextBlock DockPanel.Dock="Right"
+                   Foreground="#5F6368"
+                   Text="仅限本地 Fake 预览" />
+      </DockPanel>
+
+      <ScrollViewer Grid.Row="1"
+                    HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto">
+        <Grid>
+          <Grid Style="{StaticResource IdlePanelStyle}">
+            <StackPanel MaxWidth="640"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+              <TextBlock FontSize="24"
+                         FontWeight="SemiBold"
+                         Foreground="#202124"
+                         HorizontalAlignment="Center"
+                         Text="把虚构记录整理成 Markdown"
+                         TextAlignment="Center"
+                         TextWrapping="Wrap" />
+              <TextBlock Margin="0,12,0,0"
+                         Foreground="#5F6368"
+                         HorizontalAlignment="Center"
+                         Text="点击开始后只会进入 FakeCaptureCoordinator，生成固定的虚构数据。"
+                         TextAlignment="Center"
+                         TextWrapping="Wrap" />
+              <Button Width="180"
+                      Margin="0,24,0,20"
+                      Padding="12,8"
+                      Command="{Binding StartCommand}"
+                      Content="开始 Fake 预览"
+                      FontSize="15" />
+              <Border Padding="14"
+                      Background="#FFF0F0F0"
+                      CornerRadius="8">
+                <StackPanel>
+                  <TextBlock FontWeight="SemiBold" Text="当前范围" />
+                  <TextBlock Margin="0,6,0,0"
+                             Foreground="#5F6368"
+                             Text="不定位前台窗口，不读取窗口标题，不访问微信进程，不进行真实捕获、OCR 或滚动。"
+                             TextWrapping="Wrap" />
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </Grid>
+
+          <Grid Style="{StaticResource ConfirmingTargetPanelStyle}">
+            <StackPanel MaxWidth="640" HorizontalAlignment="Center">
+              <Border Padding="18"
+                      Background="#FFFFF5E6"
+                      BorderBrush="#FFE7C98B"
+                      BorderThickness="1"
+                      CornerRadius="10">
+                <StackPanel>
+                  <TextBlock FontSize="17"
+                             FontWeight="SemiBold"
+                             Foreground="#6D4C16"
+                             Text="这是完全虚构的目标，不是微信窗口" />
+                  <TextBlock Margin="0,10,0,0"
+                             FontWeight="SemiBold"
+                             Text="来源：FakeCaptureCoordinator" />
+                  <TextBlock Margin="0,5,0,0">
+                    <Run Text="应用名：" />
+                    <Run Text="{Binding Target.ApplicationName}" />
+                  </TextBlock>
+                  <TextBlock Margin="0,5,0,0">
+                    <Run Text="窗口标题：" />
+                    <Run Text="{Binding Target.WindowTitle}" />
+                  </TextBlock>
+                  <TextBlock Margin="0,5,0,0">
+                    <Run Text="窗口尺寸：" />
+                    <Run Text="{Binding Target.Width}" />
+                    <Run Text=" × " />
+                    <Run Text="{Binding Target.Height}" />
+                  </TextBlock>
+                </StackPanel>
+              </Border>
+              <TextBlock Margin="0,18,0,0"
+                         Foreground="#5F6368"
+                         Text="确认后将运行 3 秒倒计时并生成内存中的虚构 Transcript；不会绑定或验证任何 HWND。"
+                         TextWrapping="Wrap" />
+              <StackPanel Margin="0,22,0,0"
+                          HorizontalAlignment="Center"
+                          Orientation="Horizontal">
+                <Button Margin="0,0,10,0"
+                        Padding="16,8"
+                        Command="{Binding ConfirmTargetCommand}"
+                        Content="确认虚构目标并开始" />
+                <Button Padding="16,8"
+                        Command="{Binding CancelCommand}"
+                        Content="取消" />
+              </StackPanel>
+            </StackPanel>
+          </Grid>
+
+          <Grid Style="{StaticResource CountdownPanelStyle}">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+              <TextBlock FontSize="72"
+                         FontWeight="SemiBold"
+                         Foreground="#173B67"
+                         HorizontalAlignment="Center"
+                         Text="{Binding CountdownRemaining}" />
+              <TextBlock Margin="0,12,0,0"
+                         FontSize="17"
+                         HorizontalAlignment="Center"
+                         Text="Fake 预览即将开始"
+                         TextAlignment="Center" />
+              <TextBlock Margin="0,8,0,0"
+                         Foreground="#5F6368"
+                         HorizontalAlignment="Center"
+                         Text="不会读取或操作微信；可以随时取消。"
+                         TextAlignment="Center" />
+              <Button Width="120"
+                      Margin="0,24,0,0"
+                      Padding="12,8"
+                      Command="{Binding CancelCommand}"
+                      Content="取消" />
+            </StackPanel>
+          </Grid>
+
+          <Grid Style="{StaticResource ScanningPanelStyle}">
+            <StackPanel MaxWidth="640" HorizontalAlignment="Center">
+              <ProgressBar Height="12"
+                           Margin="0,0,0,20"
+                           Maximum="1"
+                           Minimum="0"
+                           Value="{Binding Progress.Percent}" />
+              <TextBlock FontSize="20"
+                         FontWeight="SemiBold"
+                         HorizontalAlignment="Center"
+                         Text="{Binding ProgressPhaseName}" />
+              <TextBlock Margin="0,8,0,0"
+                         Foreground="#5F6368"
+                         HorizontalAlignment="Center"
+                         Text="{Binding Progress.Reason}"
+                         TextAlignment="Center"
+                         TextWrapping="Wrap" />
+              <UniformGrid Margin="0,28,0,18" Columns="3">
+                <StackPanel>
+                  <TextBlock FontSize="24"
+                             HorizontalAlignment="Center"
+                             Text="{Binding Progress.ViewportCount}" />
+                  <TextBlock Foreground="#5F6368"
+                             HorizontalAlignment="Center"
+                             Text="视口" />
+                </StackPanel>
+                <StackPanel>
+                  <TextBlock FontSize="24"
+                             HorizontalAlignment="Center"
+                             Text="{Binding Progress.MessageCount}" />
+                  <TextBlock Foreground="#5F6368"
+                             HorizontalAlignment="Center"
+                             Text="消息" />
+                </StackPanel>
+                <StackPanel>
+                  <TextBlock FontSize="24"
+                             HorizontalAlignment="Center"
+                             Text="{Binding Progress.LowConfidenceCount}" />
+                  <TextBlock Foreground="#5F6368"
+                             HorizontalAlignment="Center"
+                             Text="存疑" />
+                </StackPanel>
+              </UniformGrid>
+              <TextBlock Foreground="#5F6368"
+                         HorizontalAlignment="Center"
+                         Text="{Binding ProgressDescription}" />
+              <StackPanel Margin="0,26,0,0"
+                          HorizontalAlignment="Center"
+                          Orientation="Horizontal">
+                <Button Margin="0,0,10,0"
+                        Padding="16,8"
+                        Command="{Binding PauseCommand}"
+                        Content="暂停" />
+                <Button Padding="16,8"
+                        Command="{Binding FinishPartialResultCommand}"
+                        Content="停止并整理已有结果" />
+              </StackPanel>
+            </StackPanel>
+          </Grid>
+
+          <Grid Style="{StaticResource PausedPanelStyle}">
+            <StackPanel MaxWidth="600" HorizontalAlignment="Center" VerticalAlignment="Center">
+              <TextBlock FontSize="22"
+                         FontWeight="SemiBold"
+                         HorizontalAlignment="Center"
+                         Text="Fake 扫描已暂停" />
+              <TextBlock Margin="0,12,0,0"
+                         Foreground="#5F6368"
+                         HorizontalAlignment="Center"
+                         Text="{Binding PauseReason}"
+                         TextAlignment="Center"
+                         TextWrapping="Wrap" />
+              <TextBlock Margin="0,8,0,0"
+                         Foreground="#5F6368"
+                         HorizontalAlignment="Center"
+                         Text="暂停只影响本地虚构数据生成，不代表真实窗口的暂停能力。"
+                         TextAlignment="Center"
+                         TextWrapping="Wrap" />
+              <StackPanel Margin="0,24,0,0"
+                          HorizontalAlignment="Center"
+                          Orientation="Horizontal">
+                <Button Margin="0,0,10,0"
+                        Padding="16,8"
+                        Command="{Binding ResumeCommand}"
+                        Content="继续" />
+                <Button Padding="16,8"
+                        Command="{Binding FinishPartialResultCommand}"
+                        Content="整理已有结果" />
+              </StackPanel>
+            </StackPanel>
+          </Grid>
+
+          <Grid Style="{StaticResource ResultPanelStyle}">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <StackPanel Grid.Row="0">
+              <TextBlock FontSize="17"
+                         FontWeight="SemiBold"
+                         Text="结果预览（Fake 数据）" />
+              <TextBlock Margin="0,5,0,12"
+                         Foreground="#5F6368"
+                         Text="{Binding ResultSummary}" />
+            </StackPanel>
+            <TextBox Grid.Row="1"
+                     MinHeight="260"
+                     Padding="10"
+                     AcceptsReturn="True"
+                     FontFamily="Consolas"
+                     FontSize="14"
+                     HorizontalScrollBarVisibility="Auto"
+                     Text="{Binding MarkdownText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     TextWrapping="NoWrap"
+                     VerticalScrollBarVisibility="Auto" />
+            <TextBlock Grid.Row="2"
+                       Margin="0,10,0,0"
+                       Foreground="#9A5B00"
+                       Text="{Binding UserMessage}"
+                       TextWrapping="Wrap" />
+            <StackPanel Grid.Row="3"
+                        Margin="0,14,0,0"
+                        HorizontalAlignment="Right"
+                        Orientation="Horizontal">
+              <Button Margin="0,0,8,0"
+                      Padding="14,8"
+                      Command="{Binding CopyMarkdownCommand}"
+                      Content="{Binding CopyButtonTitle}" />
+              <Button Margin="0,0,8,0"
+                      Padding="14,8"
+                      Command="{Binding SaveMarkdownCommand}"
+                      Content="保存 Markdown" />
+              <Button Padding="14,8"
+                      Command="{Binding ClearResultCommand}"
+                      Content="清除并返回待机" />
+            </StackPanel>
+          </Grid>
+
+          <Grid Style="{StaticResource ErrorPanelStyle}">
+            <StackPanel MaxWidth="620" HorizontalAlignment="Center" VerticalAlignment="Center">
+              <TextBlock FontSize="22"
+                         FontWeight="SemiBold"
+                         HorizontalAlignment="Center"
+                         Text="Fake 预览发生问题" />
+              <TextBlock Margin="0,14,0,0"
+                         Foreground="#B3261E"
+                         HorizontalAlignment="Center"
+                         Text="{Binding ErrorMessage}"
+                         TextAlignment="Center"
+                         TextWrapping="Wrap" />
+              <Button Width="120"
+                      Margin="0,24,0,0"
+                      Padding="14,8"
+                      Command="{Binding ClearResultCommand}"
+                      Content="返回待机" />
+            </StackPanel>
+          </Grid>
+        </Grid>
+      </ScrollViewer>
+    </Grid>
   </Grid>
 </Window>
