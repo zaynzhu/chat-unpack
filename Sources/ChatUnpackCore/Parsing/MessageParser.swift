@@ -84,20 +84,23 @@ public struct MessageParser {
       let senderConfidence = senderCandidate?.line.confidence
         ?? 0
 
-      var bodyLines = orderedLines[(headerIndex + 1)..<nextBlockStartIndex]
+      let bodyOCRLines = orderedLines[(headerIndex + 1)..<nextBlockStartIndex]
         .enumerated()
         .filter { offset, _ in
           let globalIndex = headerIndex + 1 + offset
           return globalIndex != senderCandidate?.lineIndex
         }
-        .map { _, line in
-          RecognizedLine(text: line.text, confidence: line.confidence)
-        }
+        .map(\.element)
+      var bodyLines = bodyOCRLines.map { line in
+        RecognizedLine(text: line.text, confidence: line.confidence)
+      }
       if let rejectedPrefix = header.rejectedPrefix {
         bodyLines.insert(
           RecognizedLine(text: rejectedPrefix, confidence: headerLine.confidence),
           at: 0
         )
+      } else if isLikelyVisualNoise(bodyOCRLines) {
+        bodyLines.removeAll()
       }
 
       let kind = classify(bodyLines.map(\.text).joined(separator: "\n"))
@@ -188,6 +191,22 @@ public struct MessageParser {
     let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty, trimmed.count <= 32 else { return false }
     return trimmed.rangeOfCharacter(from: CharacterSet(charactersIn: "。！？!?；;\n")) == nil
+  }
+
+  private func isLikelyVisualNoise(_ lines: [OCRLine]) -> Bool {
+    guard lines.count == 1, let line = lines.first else { return false }
+    let trimmed = line.text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty, trimmed.count <= 8, line.confidence < 0.65 else {
+      return false
+    }
+
+    let scalars = trimmed.unicodeScalars
+    let hasHan = scalars.contains(where: { $0.properties.isIdeographic })
+    let hasLatin = scalars.contains(where: {
+      (65...90).contains($0.value) || (97...122).contains($0.value)
+    })
+    let hasDigit = scalars.contains(where: { (48...57).contains($0.value) })
+    return hasHan && hasLatin && hasDigit
   }
 
   private func classify(_ text: String) -> MessageKind {

@@ -73,6 +73,7 @@ public struct TranscriptAssembler: Sendable {
   }
 
   public mutating func finish(status: TranscriptStatus, reason: String? = nil) {
+    canonicalizeSenders()
     transcript.status = status
     if let reason, !reason.isEmpty {
       transcript.warnings.append(ScanWarning(code: "CU-STATE", message: reason))
@@ -94,6 +95,62 @@ public struct TranscriptAssembler: Sendable {
       && timestampMatches
       && lhs.kind == rhs.kind
       && bodyOverlapCount(lhs.body, rhs.body) > 0
+  }
+
+  private mutating func canonicalizeSenders() {
+    let entries: [(index: Int, text: String, core: String)] = transcript.messages
+      .enumerated()
+      .compactMap { entry in
+        let index = entry.offset
+        let message = entry.element
+        let text = message.sender.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty,
+              !message.sender.isUserCorrected,
+              let core = longestHanRun(in: text),
+              core.count >= 2 else {
+          return nil
+        }
+        return (index: index, text: text, core: core)
+      }
+
+    var formsByCore: [String: Set<String>] = [:]
+    for entry in entries {
+      formsByCore[entry.core, default: []].insert(entry.text)
+    }
+    let anchors = formsByCore.compactMap { core, forms in
+      forms.count >= 4 ? core : nil
+    }
+    guard !anchors.isEmpty else { return }
+
+    for entry in entries {
+      let matchingAnchor = anchors
+        .filter { anchor in
+          entry.core.contains(anchor) && entry.core.count - anchor.count <= 1
+        }
+        .max(by: { $0.count < $1.count })
+      if let matchingAnchor {
+        transcript.messages[entry.index].sender.text = matchingAnchor
+      }
+    }
+  }
+
+  private func longestHanRun(in text: String) -> String? {
+    var longest = ""
+    var current = ""
+    for character in text {
+      if character.unicodeScalars.allSatisfy({ $0.properties.isIdeographic }) {
+        current.append(character)
+      } else {
+        if current.count > longest.count {
+          longest = current
+        }
+        current = ""
+      }
+    }
+    if current.count > longest.count {
+      longest = current
+    }
+    return longest.isEmpty ? nil : longest
   }
 
   private func sameUnanchoredFragment(_ lhs: ChatMessage, _ rhs: ChatMessage) -> Bool {

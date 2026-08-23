@@ -142,4 +142,35 @@ func runTranscriptAssemblerTests(_ suite: inout TestSuite) {
     }),
     "应保留会话结束原因"
   )
+
+  var senderNoiseAssembler = TranscriptAssembler(title: "模拟记录")
+  let shortSenderVariants = ["云舟", "云舟1", "云舟：", "云舟～", "关云舟", "云舟心"]
+  let longSenderVariants = [
+    "7星河常在8（2",
+    "9星河常在8（=0",
+    "'S星河常在8（ 4",
+    "星河常在8（=2五"
+  ]
+  let distinctSenders = ["测试成员1", "测试成员2", "测试成员3"]
+  let senderMessages = (shortSenderVariants + longSenderVariants + distinctSenders).enumerated().map {
+    index, sender in
+    makeMessage(sender: sender, timestamp: String(format: "11:%02d", index))
+  }
+  senderNoiseAssembler.append(messages: senderMessages, viewportIndex: 0)
+  senderNoiseAssembler.finish(status: .complete)
+  let canonicalSenders = senderNoiseAssembler.transcript.messages.map(\.sender.text)
+  suite.expect(
+    Array(canonicalSenders.prefix(shortSenderVariants.count))
+      == Array(repeating: "云舟", count: shortSenderVariants.count),
+    "多种前后缀 OCR 漂移应归一为重复出现的短昵称"
+  )
+  suite.expect(
+    Array(canonicalSenders.dropFirst(shortSenderVariants.count).prefix(longSenderVariants.count))
+      == Array(repeating: "星河常在", count: longSenderVariants.count),
+    "混合字符乱码应归一为稳定的中文昵称核心"
+  )
+  suite.expect(
+    Array(canonicalSenders.suffix(distinctSenders.count)) == distinctSenders,
+    "证据不足的相似昵称必须保持原样"
+  )
 }

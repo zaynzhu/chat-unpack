@@ -103,4 +103,31 @@ func runMessageParserTests(_ suite: inout TestSuite) {
   ]
   let alignedSender = MessageParser().parse(lines: alignedSenderLines, viewportIndex: 0).first
   suite.expect(alignedSender?.sender.text == "模拟昵称", "轻微基线偏差的真实发言人仍应识别")
+
+  let visualNoiseLines = [
+    makeOCRLine("模拟成员", x: 0.10, top: 0.10),
+    makeOCRLine("10:08", x: 0.78, top: 0.10, width: 0.12),
+    makeOCRLine("7云A", x: 0.10, top: 0.17, confidence: 0.30)
+  ]
+  let visualNoise = MessageParser().parse(lines: visualNoiseLines, viewportIndex: 0).first
+  suite.expect(visualNoise?.kind == .unknownNonText, "短小混合字符的低置信度图像伪文字应按非文字处理")
+  suite.expect(visualNoise?.body.isEmpty == true, "图像伪文字不能作为发言内容导出")
+
+  let validMixedTextLines = [
+    makeOCRLine("模拟成员", x: 0.10, top: 0.10),
+    makeOCRLine("10:09", x: 0.78, top: 0.10, width: 0.12),
+    makeOCRLine("A股100", x: 0.10, top: 0.17, confidence: 0.95)
+  ]
+  let validMixedText = MessageParser().parse(lines: validMixedTextLines, viewportIndex: 0).first
+  suite.expect(validMixedText?.kind == .text, "高置信度的短混合文本必须保留")
+  suite.expect(validMixedText?.body.map(\.text) == ["A股100"], "正常短文本不能被伪文字过滤误删")
+
+  let validShortTextLines = [
+    makeOCRLine("模拟成员", x: 0.10, top: 0.10),
+    makeOCRLine("10:10", x: 0.78, top: 0.10, width: 0.12),
+    makeOCRLine("收到", x: 0.10, top: 0.17, confidence: 0.30)
+  ]
+  let validShortText = MessageParser().parse(lines: validShortTextLines, viewportIndex: 0).first
+  suite.expect(validShortText?.kind == .text, "低置信度不能单独成为删除短文本的理由")
+  suite.expect(validShortText?.body.map(\.text) == ["收到"], "正常中文短消息必须保留")
 }
