@@ -4,6 +4,8 @@
 
 当前源码已经包含纯 C# Core、本地 Fake WPF 闭环和 200 条完全虚构的 FixtureHost，但尚未在 Windows 编译或运行。主应用只生成内存中的虚构 Transcript，不定位、枚举、捕获、OCR、滚动或访问微信；窗口会明确显示“Windows v0.1 开发预览版，尚未在 Windows 构建/运行”。
 
+首次在真实 Windows 机器继续工作时，必须先阅读并执行 [Windows 首次实机开发与验收交接](../docs/WINDOWS-FIRST-RUN-HANDOFF.md)。其中包含当前进度、逐步命令、人工检查项、失败处理、记录模板和后续开发边界。
+
 ## 项目
 
 - `src/ChatUnpack.Core`：纯 `net8.0` 核心库，包含解析、拼接和 Markdown 导出，不依赖 Windows 或 WPF。

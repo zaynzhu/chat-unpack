@@ -10,7 +10,7 @@
 
 本文档只记录当前 checkout 能证明的实现、验证证据、已知限制和剩余验收，不充当版本流水账。产品和隐私约束见 [DESIGN.md](DESIGN.md)。
 
-Windows v0.1 的代码开发边界、阶段和验收层级见 [WINDOWS-V0.1-PLAN.md](WINDOWS-V0.1-PLAN.md)。当前 Mac 不安装 Windows 开发环境，因此任何 Windows 源码在首次 Windows 11 构建前都不能记为已实现或已验证。
+Windows v0.1 的代码开发边界、阶段和验收层级见 [WINDOWS-V0.1-PLAN.md](WINDOWS-V0.1-PLAN.md)。真实 Windows 首次执行顺序、人工检查项和结果记录模板见 [WINDOWS-FIRST-RUN-HANDOFF.md](WINDOWS-FIRST-RUN-HANDOFF.md)。当前 Mac 不安装 Windows 开发环境，因此任何 Windows 源码在首次 Windows 11 构建前都不能记为已实现或已验证。
 
 ## 1. 当前已实现
 

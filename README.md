@@ -6,7 +6,7 @@ ChatUnpack 是一个个人自用的完全离线桌面工具：把你主动打开
 
 当前已验证版本为 macOS v0.1.11（build 12），支持 macOS 13 及以上、Apple Silicon。Windows 11 x64 原生客户端已进入 v0.1 开发阶段，采用 C#、.NET 8 和 WPF；当前 Mac 不安装 Windows 开发环境，因此 Windows 代码在真实 Windows 首次构建与运行前统一标记为未编译、未运行、未验收。
 
-Windows 的详细范围和验证门槛见 [Windows v0.1 实施计划](docs/WINDOWS-V0.1-PLAN.md)。
+Windows 的详细范围和验证门槛见 [Windows v0.1 实施计划](docs/WINDOWS-V0.1-PLAN.md)。在真实 Windows 机器上首次继续开发或验收时，先按 [Windows 首次实机交接](docs/WINDOWS-FIRST-RUN-HANDOFF.md) 执行。
 
 ## 使用流程
 
