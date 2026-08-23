@@ -1,6 +1,6 @@
 # ChatUnpack Windows v0.1 详细实施计划
 
-> 状态：编码已获授权；首次构建与运行留待 Windows 实机
+> 状态：工程、Core、Fake WPF 流程和 FixtureHost 源码已完成；首次构建与运行留待 Windows 实机
 >
 > 目标版本：Windows v0.1.0-preview.1
 >

@@ -42,6 +42,21 @@ Windows v0.1 的代码开发边界、阶段和验收层级见 [WINDOWS-V0.1-PLAN
 - 源码静态搜索未发现网络客户端、上传、遥测、数据库读取、进程注入或消息发送实现。
 - 用户已经自行触发过真实记录窗口试用并反馈结构问题；开发自动化没有读取、点击、滚动或保存真实微信内容。
 
+### 2.1 Windows v0.1 源码快照
+
+当前 checkout 只能证明 L0 静态状态，不能证明 Windows 运行结果：
+
+- 已建立独立的 .NET 8 x64 解决方案、纯 C# Core、WPF 主应用、FixtureHost 和 Core Test Runner。
+- C# Core 已移植时间解析、消息解析、相邻视口拼接、昵称归一化、头部残片清理、Markdown 渲染和 1800 字符分段。
+- Windows OCR 模型使用可空置信度；缺失置信度时不执行低置信度过滤规则。
+- Core Test Runner 源码有 122 处静态检查调用，包含 3 项 Windows 可空置信度边界；尚未在 .NET 8 执行。
+- WPF 主应用当前只连接 `FakeCaptureCoordinator`，可以生成虚构 Transcript 的源码闭环，但尚未运行。
+- Windows FixtureHost 源码确定性生成 200 条完全虚构消息，使用标准 `ScrollViewer` 和 `ItemsControl`，但 UI Automation `ScrollPattern` 尚未实测。
+- Windows 源码未发现第三方 `PackageReference`、网络客户端、数据库、进程读写、注入、真实捕获、OCR、`SendInput` 或微信访问实现。
+- 当前 Mac 没有安装或调用 .NET、Windows SDK、虚拟机或 PowerShell 7。
+
+首次 Windows 验收命令和通过标准见 [Windows README](../windows/README.md)。
+
 ## 3. 标准验证命令
 
 ```bash
