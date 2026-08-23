@@ -3,19 +3,36 @@ import ChatUnpackCore
 func runTranscriptAssemblerTests(_ suite: inout TestSuite) {
   var partialAssembler = TranscriptAssembler(title: "模拟记录")
   partialAssembler.append(
-    messages: [makeMessage(body: ["消息前半段"], isPartial: true)],
+    messages: [makeMessage(body: ["消息前半段", "共同接缝"], isPartial: true)],
     viewportIndex: 0
   )
   partialAssembler.append(
-    messages: [makeMessage(body: ["消息后半段"], isPartial: true)],
+    messages: [makeMessage(body: ["共同接缝", "消息后半段"], isPartial: true)],
     viewportIndex: 1
   )
   suite.expect(partialAssembler.messageCount == 1, "同一条接缝消息应合并")
   if let merged = partialAssembler.transcript.messages.first {
-    suite.expect(merged.body.map(\.text) == ["消息前半段", "消息后半段"], "接缝正文应完整")
+    suite.expect(
+      merged.body.map(\.text) == ["消息前半段", "共同接缝", "消息后半段"],
+      "接缝正文应完整"
+    )
     suite.expect(!merged.isPartial, "互补接缝合并后不应继续标记 partial")
     suite.expect(merged.sourceViewportIndices == [0, 1], "合并消息应保留两个来源视口")
   }
+
+  var sameHeaderAssembler = TranscriptAssembler(title: "模拟记录")
+  sameHeaderAssembler.append(
+    messages: [makeMessage(body: ["第一条独立正文"], isPartial: true)],
+    viewportIndex: 0
+  )
+  sameHeaderAssembler.append(
+    messages: [makeMessage(body: ["第二条独立正文"], isPartial: true)],
+    viewportIndex: 1
+  )
+  suite.expect(
+    sameHeaderAssembler.messageCount == 2,
+    "同一发言人同一分钟的不同正文不能仅凭头部相同而合并"
+  )
 
   var overlappingBodyAssembler = TranscriptAssembler(title: "模拟记录")
   overlappingBodyAssembler.append(
@@ -31,6 +48,46 @@ func runTranscriptAssemblerTests(_ suite: inout TestSuite) {
     overlappingBodyAssembler.transcript.messages.first?.body.map(\.text)
       == ["第一行", "第二行", "第三行"],
     "接缝正文的重叠行不能重复"
+  )
+
+  var unanchoredAssembler = TranscriptAssembler(title: "模拟记录")
+  var firstUnanchored = makeMessage(
+    sender: "",
+    timestamp: "",
+    body: ["模拟片段第一行", "模拟片段第二行", "模拟片段第三行"],
+    isPartial: true
+  )
+  firstUnanchored.warnings = [.missingTimestampAnchor()]
+  var secondUnanchored = makeMessage(
+    sender: "",
+    timestamp: "",
+    body: ["模拟片段第二行", "模拟片段第三行", "模拟片段第四行"],
+    isPartial: true
+  )
+  secondUnanchored.warnings = [.missingTimestampAnchor()]
+  unanchoredAssembler.append(messages: [firstUnanchored], viewportIndex: 0)
+  unanchoredAssembler.append(messages: [secondUnanchored], viewportIndex: 1)
+  suite.expect(unanchoredAssembler.messageCount == 1, "连续无时间锚点视口的重叠正文不能重复导出")
+  suite.expect(
+    unanchoredAssembler.transcript.messages.first?.body.map(\.text)
+      == ["模拟片段第一行", "模拟片段第二行", "模拟片段第三行", "模拟片段第四行"],
+    "无时间锚点视口只能去除已确认的重叠行"
+  )
+  suite.expect(
+    unanchoredAssembler.transcript.messages.first?.warnings.count == 1,
+    "合并后的无时间锚点消息不能重复同一警告"
+  )
+
+  var ambiguousShortAssembler = TranscriptAssembler(title: "模拟记录")
+  var firstShortFragment = makeMessage(sender: "", timestamp: "", body: ["短句"], isPartial: true)
+  firstShortFragment.warnings = [.missingTimestampAnchor()]
+  var secondShortFragment = makeMessage(sender: "", timestamp: "", body: ["短句"], isPartial: true)
+  secondShortFragment.warnings = [.missingTimestampAnchor()]
+  ambiguousShortAssembler.append(messages: [firstShortFragment], viewportIndex: 0)
+  ambiguousShortAssembler.append(messages: [secondShortFragment], viewportIndex: 1)
+  suite.expect(
+    ambiguousShortAssembler.messageCount == 2,
+    "无时间锚点的单行短句无法确认身份时必须保留"
   )
 
   var uncertainAssembler = TranscriptAssembler(title: "模拟记录")

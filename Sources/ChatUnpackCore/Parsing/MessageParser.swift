@@ -51,16 +51,19 @@ public struct MessageParser {
     let headers = headerIndices.map { headerIndex in
       let headerLine = orderedLines[headerIndex]
       let match = TimestampParser.match(in: headerLine.text)
+      let rawPrefix = match?.prefix ?? ""
+      let senderPrefix = isPlausibleSender(rawPrefix) ? rawPrefix : ""
       let sender = senderCandidate(
         for: headerLine,
         headerIndex: headerIndex,
         in: orderedLines,
-        prefix: match?.prefix ?? ""
+        prefix: senderPrefix
       )
       return Header(
         lineIndex: headerIndex,
         match: match,
         sender: sender,
+        rejectedPrefix: rawPrefix.isEmpty || !senderPrefix.isEmpty ? nil : rawPrefix,
         blockStartIndex: min(headerIndex, sender?.lineIndex ?? headerIndex)
       )
     }
@@ -77,12 +80,11 @@ public struct MessageParser {
       let senderCandidate = header.sender
 
       let senderText = senderCandidate?.line.text
-        ?? match?.prefix
         ?? ""
       let senderConfidence = senderCandidate?.line.confidence
-        ?? (match?.prefix.isEmpty == false ? headerLine.confidence : 0)
+        ?? 0
 
-      let bodyLines = orderedLines[(headerIndex + 1)..<nextBlockStartIndex]
+      var bodyLines = orderedLines[(headerIndex + 1)..<nextBlockStartIndex]
         .enumerated()
         .filter { offset, _ in
           let globalIndex = headerIndex + 1 + offset
@@ -91,6 +93,12 @@ public struct MessageParser {
         .map { _, line in
           RecognizedLine(text: line.text, confidence: line.confidence)
         }
+      if let rejectedPrefix = header.rejectedPrefix {
+        bodyLines.insert(
+          RecognizedLine(text: rejectedPrefix, confidence: headerLine.confidence),
+          at: 0
+        )
+      }
 
       let kind = classify(bodyLines.map(\.text).joined(separator: "\n"))
       var warnings: [ScanWarning] = []
@@ -126,6 +134,7 @@ public struct MessageParser {
     let lineIndex: Int
     let match: TimestampMatch?
     let sender: SenderCandidate?
+    let rejectedPrefix: String?
     let blockStartIndex: Int
   }
 
@@ -159,7 +168,7 @@ public struct MessageParser {
         return nil
       }
       guard TimestampParser.match(in: line.text) == nil else { return nil }
-      guard line.text.count <= 80 else { return nil }
+      guard isPlausibleSender(line.text) else { return nil }
       return SenderCandidate(lineIndex: index, line: line)
     }
 
@@ -168,6 +177,12 @@ public struct MessageParser {
       let rhsMaxX = rhs.line.boundingBox.origin.x + rhs.line.boundingBox.size.width
       return lhsMaxX < rhsMaxX
     }
+  }
+
+  private func isPlausibleSender(_ text: String) -> Bool {
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty, trimmed.count <= 32 else { return false }
+    return trimmed.rangeOfCharacter(from: CharacterSet(charactersIn: "。！？!?；;\n")) == nil
   }
 
   private func classify(_ text: String) -> MessageKind {

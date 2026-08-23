@@ -43,7 +43,7 @@ public struct TranscriptAssembler: Sendable {
     if let first = currentMessages.first,
        let last = transcript.messages.last,
        (first.isPartial || last.isPartial) {
-      if sameBoundaryIdentity(last, first) {
+      if sameBoundaryIdentity(last, first) || sameUnanchoredFragment(last, first) {
         transcript.messages[transcript.messages.count - 1] = merge(last, first)
         currentMessages.removeFirst()
         if currentMessages.isEmpty {
@@ -53,8 +53,8 @@ public struct TranscriptAssembler: Sendable {
     }
 
     let decision = overlapMatcher.match(
-      previousTail: Array(transcript.messages.suffix(8)),
-      currentHead: Array(currentMessages.prefix(8))
+      previousTail: Array(transcript.messages.suffix(overlapMatcher.maximumOverlapMessages)),
+      currentHead: Array(currentMessages.prefix(overlapMatcher.maximumOverlapMessages))
     )
 
     if decision.isAmbiguous {
@@ -90,7 +90,25 @@ public struct TranscriptAssembler: Sendable {
     let timestampMatches = !lhs.timestamp.text.isEmpty
       && lhs.timestamp.text.trimmingCharacters(in: .whitespacesAndNewlines)
         == rhs.timestamp.text.trimmingCharacters(in: .whitespacesAndNewlines)
-    return senderMatches && timestampMatches
+    return senderMatches
+      && timestampMatches
+      && lhs.kind == rhs.kind
+      && bodyOverlapCount(lhs.body, rhs.body) > 0
+  }
+
+  private func sameUnanchoredFragment(_ lhs: ChatMessage, _ rhs: ChatMessage) -> Bool {
+    guard lhs.sender.text.isEmpty,
+          rhs.sender.text.isEmpty,
+          lhs.timestamp.text.isEmpty,
+          rhs.timestamp.text.isEmpty else {
+      return false
+    }
+    let overlapCount = bodyOverlapCount(lhs.body, rhs.body)
+    if overlapCount >= 2 {
+      return true
+    }
+    guard overlapCount == 1, let line = rhs.body.first else { return false }
+    return normalized(line.text).count >= 12
   }
 
   private func merge(_ lhs: ChatMessage, _ rhs: ChatMessage) -> ChatMessage {
@@ -104,7 +122,11 @@ public struct TranscriptAssembler: Sendable {
 
     merged.body = mergeBody(merged.body, rhs.body)
 
-    merged.warnings.append(contentsOf: rhs.warnings)
+    for warning in rhs.warnings where !merged.warnings.contains(where: {
+      $0.code == warning.code && $0.message == warning.message
+    }) {
+      merged.warnings.append(warning)
+    }
     merged.sourceViewportIndices.formUnion(rhs.sourceViewportIndices)
     merged.isPartial = false
     return merged
@@ -117,20 +139,34 @@ public struct TranscriptAssembler: Sendable {
     guard !lhs.isEmpty else { return rhs }
     guard !rhs.isEmpty else { return lhs }
 
-    let leftText = lhs.map { normalized($0.text) }
-    let rightText = rhs.map { normalized($0.text) }
-    let maximumOverlap = min(leftText.count, rightText.count)
-
-    for count in stride(from: maximumOverlap, through: 1, by: -1) {
-      if Array(leftText.suffix(count)) == Array(rightText.prefix(count)) {
-        return lhs + rhs.dropFirst(count)
-      }
+    let overlapCount = bodyOverlapCount(lhs, rhs)
+    if overlapCount > 0 {
+      return lhs + rhs.dropFirst(overlapCount)
     }
 
+    let leftText = lhs.map { normalized($0.text) }
+    let rightText = rhs.map { normalized($0.text) }
     if containsSequence(leftText, sequence: rightText) {
       return lhs
     }
     return lhs + rhs
+  }
+
+  private func bodyOverlapCount(
+    _ lhs: [RecognizedLine],
+    _ rhs: [RecognizedLine]
+  ) -> Int {
+    let leftText = lhs.map { normalized($0.text) }
+    let rightText = rhs.map { normalized($0.text) }
+    let maximumOverlap = min(leftText.count, rightText.count)
+    guard maximumOverlap > 0 else { return 0 }
+
+    for count in stride(from: maximumOverlap, through: 1, by: -1) {
+      if Array(leftText.suffix(count)) == Array(rightText.prefix(count)) {
+        return count
+      }
+    }
+    return 0
   }
 
   private func containsSequence(_ values: [String], sequence: [String]) -> Bool {

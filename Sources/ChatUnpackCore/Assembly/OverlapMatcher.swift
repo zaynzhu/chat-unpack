@@ -16,7 +16,7 @@ public struct OverlapMatcher: Sendable {
   public let maximumOverlapMessages: Int
   public let fuzzyThreshold: Double
 
-  public init(maximumOverlapMessages: Int = 8, fuzzyThreshold: Double = 0.84) {
+  public init(maximumOverlapMessages: Int = 32, fuzzyThreshold: Double = 0.84) {
     self.maximumOverlapMessages = maximumOverlapMessages
     self.fuzzyThreshold = fuzzyThreshold
   }
@@ -34,51 +34,59 @@ public struct OverlapMatcher: Sendable {
       for count in stride(from: maximumCount, through: 1, by: -1) {
         let tailSlice = tail.suffix(count)
         let headSlice = head.prefix(count)
-        if zip(tailSlice, headSlice).allSatisfy({ exactMatch($0, $1) }) {
+        let requiresSenderMatch = count == 1
+        if zip(tailSlice, headSlice).allSatisfy({
+          exactMatch($0, $1, requiresSenderMatch: requiresSenderMatch)
+        }) {
           return OverlapDecision(overlapCount: count, isReliable: true)
         }
       }
     }
 
     var candidates: [(count: Int, score: Double)] = []
-    for count in 1...maximumCount {
-      let tailSlice = Array(tail.suffix(count))
-      let headSlice = Array(head.prefix(count))
-      let scores = zip(tailSlice, headSlice).map { fuzzyScore($0, $1) }
-      guard scores.allSatisfy({ $0 >= fuzzyThreshold }) else { continue }
-      candidates.append((count: count, score: scores.reduce(0, +) / Double(scores.count)))
+    if maximumCount >= 2 {
+      for count in 2...maximumCount {
+        let tailSlice = Array(tail.suffix(count))
+        let headSlice = Array(head.prefix(count))
+        let scores = zip(tailSlice, headSlice).map { fuzzyScore($0, $1) }
+        guard scores.allSatisfy({ $0 >= fuzzyThreshold }) else { continue }
+        candidates.append((count: count, score: scores.reduce(0, +) / Double(scores.count)))
+      }
     }
 
     guard let best = candidates.max(by: { lhs, rhs in
-      if lhs.score == rhs.score {
-        return lhs.count < rhs.count
+      if lhs.count == rhs.count {
+        return lhs.score < rhs.score
       }
-      return lhs.score < rhs.score
+      return lhs.count < rhs.count
     }) else {
       return OverlapDecision(overlapCount: 0, isReliable: true)
-    }
-
-    let equallyGood = candidates.filter {
-      abs($0.score - best.score) < 0.0001 && $0.count != best.count
-    }
-    if !equallyGood.isEmpty {
-      return OverlapDecision(overlapCount: 0, isReliable: false, isAmbiguous: true)
     }
 
     return OverlapDecision(overlapCount: best.count, isReliable: true)
   }
 
-  private func exactMatch(_ lhs: ChatMessage, _ rhs: ChatMessage) -> Bool {
-    normalized(lhs.sender.text) == normalized(rhs.sender.text)
-      && normalized(lhs.timestamp.text) == normalized(rhs.timestamp.text)
+  private func exactMatch(
+    _ lhs: ChatMessage,
+    _ rhs: ChatMessage,
+    requiresSenderMatch: Bool
+  ) -> Bool {
+    let sender = normalized(lhs.sender.text)
+    let timestamp = normalized(lhs.timestamp.text)
+    if requiresSenderMatch {
+      guard !sender.isEmpty,
+            !timestamp.isEmpty,
+            sender == normalized(rhs.sender.text) else {
+        return false
+      }
+    }
+    return timestamp == normalized(rhs.timestamp.text)
       && normalized(bodyText(lhs)) == normalized(bodyText(rhs))
       && lhs.kind == rhs.kind
   }
 
   private func fuzzyScore(_ lhs: ChatMessage, _ rhs: ChatMessage) -> Double {
-    let sender = normalized(lhs.sender.text)
     let timestamp = normalized(lhs.timestamp.text)
-    guard !sender.isEmpty, sender == normalized(rhs.sender.text) else { return 0 }
     guard !timestamp.isEmpty, timestamp == normalized(rhs.timestamp.text) else { return 0 }
 
     let bodyScore: Double

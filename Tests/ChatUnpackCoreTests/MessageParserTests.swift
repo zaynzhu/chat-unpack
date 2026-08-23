@@ -66,4 +66,19 @@ func runMessageParserTests(_ suite: inout TestSuite) {
     emoji?.warnings.contains(where: { $0.code == "CU-O003" }) == false,
     "已分类的表情占位符不应增加 OCR 存疑警告"
   )
+
+  let longBodyPrefix = "这是一段明显属于消息正文而不是昵称的模拟长句内容用于验证字段边界不会被错误吞掉"
+  let mergedHeaderLines = [
+    makeOCRLine("\(longBodyPrefix) 10:04", x: 0.10, top: 0.10, width: 0.80),
+    makeOCRLine("正文下一行", x: 0.10, top: 0.17, width: 0.45)
+  ]
+  if let message = MessageParser().parse(lines: mergedHeaderLines, viewportIndex: 0).first {
+    suite.expect(message.sender.text.isEmpty, "明显过长的时间前缀不能作为发言人")
+    suite.expect(
+      message.body.map(\.text) == [longBodyPrefix, "正文下一行"],
+      "被拒绝的发言人候选必须完整保留在正文中"
+    )
+  } else {
+    suite.expect(false, "应保留时间前缀与正文粘连的消息")
+  }
 }
