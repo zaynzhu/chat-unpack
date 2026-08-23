@@ -6,7 +6,7 @@ public struct MessageParser {
     public var partialEdgeTolerance: CGFloat
 
     public init(
-      timeBandTolerance: CGFloat = 0.065,
+      timeBandTolerance: CGFloat = 0.03,
       partialEdgeTolerance: CGFloat = 0.025
     ) {
       self.timeBandTolerance = timeBandTolerance
@@ -159,7 +159,12 @@ public struct MessageParser {
 
     let candidates = lines.enumerated().compactMap { index, line -> SenderCandidate? in
       guard index != headerIndex else { return nil }
-      guard abs(line.centerY - timestampLine.centerY) <= configuration.timeBandTolerance else {
+      let heightBasedTolerance = max(
+        line.boundingBox.size.height,
+        timestampLine.boundingBox.size.height
+      ) * 0.6
+      let tolerance = min(configuration.timeBandTolerance, heightBasedTolerance)
+      guard abs(line.centerY - timestampLine.centerY) <= tolerance else {
         return nil
       }
       let lineMaxX = line.boundingBox.origin.x + line.boundingBox.size.width

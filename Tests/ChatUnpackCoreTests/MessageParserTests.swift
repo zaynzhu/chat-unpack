@@ -81,4 +81,26 @@ func runMessageParserTests(_ suite: inout TestSuite) {
   } else {
     suite.expect(false, "应保留时间前缀与正文粘连的消息")
   }
+
+  let bodyNearHeaderLines = [
+    makeOCRLine("10:06", x: 0.78, top: 0.10, width: 0.12),
+    makeOCRLine("这是一条靠近时间行的模拟正文", x: 0.10, top: 0.14, width: 0.42)
+  ]
+  if let message = MessageParser().parse(lines: bodyNearHeaderLines, viewportIndex: 0).first {
+    suite.expect(message.sender.text.isEmpty, "时间行下方的正文不能被当作发言人")
+    suite.expect(
+      message.body.map(\.text) == ["这是一条靠近时间行的模拟正文"],
+      "拒绝错误发言人候选时必须保留正文"
+    )
+  } else {
+    suite.expect(false, "应解析紧邻时间行的模拟消息")
+  }
+
+  let alignedSenderLines = [
+    makeOCRLine("模拟昵称", x: 0.10, top: 0.108),
+    makeOCRLine("10:07", x: 0.78, top: 0.10, width: 0.12),
+    makeOCRLine("模拟正文", x: 0.10, top: 0.17, width: 0.30)
+  ]
+  let alignedSender = MessageParser().parse(lines: alignedSenderLines, viewportIndex: 0).first
+  suite.expect(alignedSender?.sender.text == "模拟昵称", "轻微基线偏差的真实发言人仍应识别")
 }
