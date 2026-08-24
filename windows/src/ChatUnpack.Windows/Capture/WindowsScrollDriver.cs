@@ -24,6 +24,7 @@ public sealed class WindowsScrollDriver : IDisposable
     scrollPattern = FindScrollPattern(target.Hwnd);
     initialPosition = ReadPosition();
     netWheelLines = 0;
+    ScanDiag.Log($"Prepare: scrollPattern={(scrollPattern is null ? "null" : "found")}, initialPercent={initialPosition.Value}");
   }
 
   public bool IsAtBottom
@@ -78,9 +79,11 @@ public sealed class WindowsScrollDriver : IDisposable
       {
         var current = scrollPattern.Current.VerticalScrollPercent;
         var viewSize = scrollPattern.Current.VerticalViewSize;
-        var step = 0.65 * (100 - viewSize);
+        var step = 0.65 * viewSize;
         scrollPattern.SetScrollPercent(ScrollPattern.NoScroll, Math.Min(100, current + step));
         await Task.Delay(220, cancellationToken);
+        var after = scrollPattern.Current.VerticalScrollPercent;
+        ScanDiag.Log($"ScrollDown(ScrollPattern): before={current:F1}, step={step:F1}, after={after:F1}");
         return true;
       }
       catch

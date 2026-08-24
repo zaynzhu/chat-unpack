@@ -128,6 +128,7 @@ public sealed class WindowsCaptureCoordinator : ICaptureCoordinator
 
         previousFingerprint = fingerprint;
         previousMessageCount = assembler.MessageCount;
+        ScanDiag.Log($"viewport={viewportIndex}, fp={fingerprint}, unchanged={unchangedRounds}, msgCount={assembler.MessageCount}, isAtBottom={scrollDriver.IsAtBottom}");
 
         yield return Progress(ScanPhase.Assembling, viewportIndex + 1, assembler.MessageCount, assembler.LowConfidenceCount, (double)(viewportIndex + 1) / MaxViewports, "拼接完成", assembler.Transcript);
       }
