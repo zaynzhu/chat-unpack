@@ -80,6 +80,68 @@ public sealed class WindowTargetLocator
       IsFixture: true);
   }
 
+  // 真实微信路径：读触发时的前台窗口并验证是微信进程（Weixin 4.x 或 WeChat 3.x）。
+  // 不枚举其他进程，不记录账号/联系人/窗口标题到日志。只读前台（用户主动触发）。
+  public WindowTarget? LocateTarget()
+  {
+    var hwnd = WinUserNative.GetForegroundWindow();
+    if (hwnd == IntPtr.Zero || !WinUserNative.IsWindowVisible(hwnd))
+    {
+      return null;
+    }
+
+    if (hwnd == WinUserNative.GetShellWindow())
+    {
+      return null;
+    }
+
+    WinUserNative.GetWindowThreadProcessId(hwnd, out uint pid);
+    if ((int)pid == Process.GetCurrentProcess().Id)
+    {
+      return null;
+    }
+
+    Process? process = null;
+    try
+    {
+      process = Process.GetProcessById((int)pid);
+    }
+    catch
+    {
+      return null;
+    }
+
+    var name = process.ProcessName;
+    if (name != "Weixin" && name != "WeChat")
+    {
+      return null;
+    }
+
+    if (DwmNative.IsWindowCloaked(hwnd))
+    {
+      return null;
+    }
+
+    WinUserNative.GetClientRect(hwnd, out WinUserNative.RECT client);
+    if (client.Width < 420 || client.Height < 500)
+    {
+      return null;
+    }
+
+    var dpi = WinUserNative.GetDpiForWindow(hwnd);
+    if (dpi == 0)
+    {
+      dpi = 96;
+    }
+
+    var scale = dpi / 96.0;
+    var physicalWidth = (int)(client.Width * scale);
+    var physicalHeight = (int)(client.Height * scale);
+
+    var title = GetWindowTitle(hwnd);
+    return new WindowTarget(hwnd, (int)pid, name, "微信", title, physicalWidth, physicalHeight, dpi, IsFixture: false);
+  }
+
   public bool IsStillValid(WindowTarget target)
   {
     if (target.Hwnd == IntPtr.Zero)

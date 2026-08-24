@@ -297,13 +297,25 @@ public sealed class AppViewModel : INotifyPropertyChanged
     }
     else
     {
+      UserMessage = "请在 3 秒内切换到微信合并聊天记录窗口并将其置于前台…";
+      await Task.Delay(3000);
+      UserMessage = null;
+      var bound = new WindowTargetLocator().LocateTarget();
+      if (bound is null)
+      {
+        ErrorMessage = "未在前台找到微信窗口；请先打开微信合并聊天记录窗口再开始。";
+        State = AppState.Error;
+        return;
+      }
+
       Target = new CaptureTarget(
-        "ChatUnpack FixtureHost（完全虚构）",
-        "Windows v0.1 虚构合并聊天记录窗口",
-        960,
-        640,
-        IsFixture: false);
-      captureCoordinator = fakeCaptureCoordinator;
+        bound.ApplicationName,
+        bound.WindowTitle,
+        bound.PhysicalWidth,
+        bound.PhysicalHeight,
+        IsFixture: false,
+        bound);
+      captureCoordinator = new WindowsCaptureCoordinator(bound);
     }
 
     State = AppState.ConfirmingTarget;

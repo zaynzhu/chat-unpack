@@ -39,7 +39,7 @@ public sealed class WindowsCaptureCoordinator : ICaptureCoordinator
   public async IAsyncEnumerable<CaptureUpdate> RunAsync(
     [EnumeratorCancellation] CancellationToken cancellationToken = default)
   {
-    var assembler = new TranscriptAssembler("FixtureHost 真实捕获记录");
+    var assembler = new TranscriptAssembler("真实捕获记录");
     scrollDriver.Prepare();
     activityMonitor.Start();
 
