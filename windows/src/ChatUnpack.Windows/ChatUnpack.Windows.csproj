@@ -15,6 +15,10 @@
     <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup>
+    <Reference Include="UIAutomationClient" />
+    <Reference Include="UIAutomationTypes" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\ChatUnpack.Core\ChatUnpack.Core.csproj" />
   </ItemGroup>
 </Project>
