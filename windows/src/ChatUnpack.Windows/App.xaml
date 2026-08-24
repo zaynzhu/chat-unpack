@@ -3,5 +3,163 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              StartupUri="MainWindow.xaml"
              ShutdownMode="OnMainWindowClose">
-  <Application.Resources />
+  <Application.Resources>
+    <!-- 颜色 token：中性灰为主，单一深靛强调色 -->
+    <SolidColorBrush x:Key="CueCanvas" Color="#FAFAFA" />
+    <SolidColorBrush x:Key="CueSurface" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="CueSurfaceAlt" Color="#F4F5F7" />
+    <SolidColorBrush x:Key="CueBorder" Color="#E5E7EB" />
+    <SolidColorBrush x:Key="CueBorderStrong" Color="#D1D5DB" />
+    <SolidColorBrush x:Key="CueText" Color="#1F2328" />
+    <SolidColorBrush x:Key="CueTextMuted" Color="#6B7280" />
+    <SolidColorBrush x:Key="CueTextFaint" Color="#9CA3AF" />
+    <SolidColorBrush x:Key="CuePrimary" Color="#2E4FD6" />
+    <SolidColorBrush x:Key="CuePrimaryHover" Color="#1E3FAE" />
+    <SolidColorBrush x:Key="CuePrimarySoft" Color="#EEF2FF" />
+    <SolidColorBrush x:Key="CueWarnSoft" Color="#FFF7ED" />
+    <SolidColorBrush x:Key="CueWarnBorder" Color="#FDBA74" />
+    <SolidColorBrush x:Key="CueWarnText" Color="#9A3412" />
+    <SolidColorBrush x:Key="CueError" Color="#DC2626" />
+
+    <!-- 字体层级 -->
+    <Style x:Key="CueDisplay" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="24" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource CueText}" />
+    </Style>
+    <Style x:Key="CueTitle" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="17" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource CueText}" />
+    </Style>
+    <Style x:Key="CueBody" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="Foreground" Value="{StaticResource CueText}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style x:Key="CueMuted" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Foreground" Value="{StaticResource CueTextMuted}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style x:Key="CueCaption" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="{StaticResource CueTextFaint}" />
+    </Style>
+
+    <!-- 按钮基础模板 -->
+    <Style x:Key="CueBtnBase" TargetType="Button">
+      <Setter Property="Padding" Value="18,10" />
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="bd"
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="7"
+                    Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter TargetName="bd" Property="Opacity" Value="0.45" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- 主按钮：实心强调色 -->
+    <Style x:Key="CueBtnPrimary" TargetType="Button" BasedOn="{StaticResource CueBtnBase}">
+      <Setter Property="Background" Value="{StaticResource CuePrimary}" />
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Style.Triggers>
+        <Trigger Property="IsMouseOver" Value="True">
+          <Setter Property="Background" Value="{StaticResource CuePrimaryHover}" />
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+
+    <!-- 次按钮：白底灰边 -->
+    <Style x:Key="CueBtnSecondary" TargetType="Button" BasedOn="{StaticResource CueBtnBase}">
+      <Setter Property="Background" Value="{StaticResource CueSurface}" />
+      <Setter Property="Foreground" Value="{StaticResource CueText}" />
+      <Setter Property="BorderBrush" Value="{StaticResource CueBorderStrong}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Style.Triggers>
+        <Trigger Property="IsMouseOver" Value="True">
+          <Setter Property="Background" Value="{StaticResource CueSurfaceAlt}" />
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+
+    <!-- 卡片 -->
+    <Style x:Key="CueCard" TargetType="Border">
+      <Setter Property="Background" Value="{StaticResource CueSurface}" />
+      <Setter Property="BorderBrush" Value="{StaticResource CueBorder}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+    </Style>
+
+    <!-- 输入框 -->
+    <Style x:Key="CueTextBox" TargetType="TextBox">
+      <Setter Property="Padding" Value="12,10" />
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="FontFamily" Value="Consolas" />
+      <Setter Property="Background" Value="{StaticResource CueSurface}" />
+      <Setter Property="BorderBrush" Value="{StaticResource CueBorderStrong}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Foreground" Value="{StaticResource CueText}" />
+      <Setter Property="CaretBrush" Value="{StaticResource CuePrimary}" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="TextBox">
+            <Border Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="7">
+              <ScrollViewer x:Name="PART_ContentHost"
+                            Margin="{TemplateBinding Padding}"
+                            Focusable="False"
+                            HorizontalScrollBarVisibility="Auto"
+                            VerticalScrollBarVisibility="Auto" />
+            </Border>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+      <Style.Triggers>
+        <Trigger Property="IsKeyboardFocused" Value="True">
+          <Setter Property="BorderBrush" Value="{StaticResource CuePrimary}" />
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+
+    <!-- 进度条 -->
+    <Style x:Key="CueProgress" TargetType="ProgressBar">
+      <Setter Property="Height" Value="8" />
+      <Setter Property="Foreground" Value="{StaticResource CuePrimary}" />
+      <Setter Property="Background" Value="{StaticResource CueSurfaceAlt}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ProgressBar">
+            <Grid>
+              <Border Background="{TemplateBinding Background}" CornerRadius="4" />
+              <Border x:Name="PART_Indicator"
+                      Background="{TemplateBinding Foreground}"
+                      CornerRadius="4"
+                      HorizontalAlignment="Left" />
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+  </Application.Resources>
 </Application>

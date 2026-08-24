@@ -7,6 +7,7 @@
         Height="760"
         MinWidth="720"
         MinHeight="560"
+        Background="{DynamicResource CueCanvas}"
         WindowStartupLocation="CenterScreen">
   <Window.Resources>
     <Style x:Key="IdlePanelStyle" TargetType="Grid">
@@ -67,118 +68,110 @@
     </Style>
   </Window.Resources>
 
-  <Grid Background="#FFF8F8F8">
+  <Grid Margin="24,20,24,20">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
 
+    <!-- 顶部说明区 -->
     <Border Grid.Row="0"
-            Margin="20,20,20,0"
-            Padding="18"
-            Background="#FFE7F0FF"
-            BorderBrush="#FFB7CBEA"
+            Padding="18,14"
+            Background="{DynamicResource CuePrimarySoft}"
+            BorderBrush="{DynamicResource CueBorder}"
             BorderThickness="1"
             CornerRadius="10">
       <StackPanel>
-        <TextBlock FontSize="22"
+        <TextBlock FontSize="13"
                    FontWeight="SemiBold"
-                   Foreground="#202124"
+                   Foreground="{DynamicResource CuePrimary}"
                    Text="ChatUnpack Windows v0.1" />
-        <TextBlock Margin="0,8,0,0"
-                   FontSize="15"
-                   FontWeight="SemiBold"
-                   Foreground="#173B67"
-                   Text="{Binding PreviewNotice}"
-                   TextWrapping="Wrap" />
         <TextBlock Margin="0,6,0,0"
-                   Foreground="#3C4A5C"
-                   Text="{Binding PrivacyNotice}"
-                   TextWrapping="Wrap" />
+                   Style="{StaticResource CueBody}"
+                   FontWeight="SemiBold"
+                   Text="{Binding PreviewNotice}" />
+        <TextBlock Margin="0,4,0,0"
+                   Style="{StaticResource CueMuted}"
+                   Text="{Binding PrivacyNotice}" />
       </StackPanel>
     </Border>
 
-    <Grid Grid.Row="1" Margin="20">
+    <Grid Grid.Row="1" Margin="0,22,0,0">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto" />
         <RowDefinition Height="*" />
       </Grid.RowDefinitions>
 
-      <DockPanel Grid.Row="0" Margin="4,18,4,12">
-        <TextBlock FontSize="18"
-                   FontWeight="SemiBold"
-                   Foreground="#202124"
-                   Text="{Binding StateTitle}" />
+      <DockPanel Grid.Row="0" Margin="2,0,2,14">
         <TextBlock DockPanel.Dock="Right"
-                   Foreground="#5F6368"
+                   VerticalAlignment="Center"
+                   Style="{StaticResource CueCaption}"
                    Text="仅限本地 Fake 预览" />
+        <TextBlock Style="{StaticResource CueTitle}" Text="{Binding StateTitle}" />
       </DockPanel>
 
       <ScrollViewer Grid.Row="1"
                     HorizontalScrollBarVisibility="Disabled"
                     VerticalScrollBarVisibility="Auto">
         <Grid>
+          <!-- 待机页 -->
           <Grid Style="{StaticResource IdlePanelStyle}">
-            <StackPanel MaxWidth="640"
+            <StackPanel MaxWidth="620"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center">
-              <TextBlock FontSize="24"
-                         FontWeight="SemiBold"
-                         Foreground="#202124"
+              <TextBlock Style="{StaticResource CueDisplay}"
                          HorizontalAlignment="Center"
                          Text="把虚构记录整理成 Markdown"
-                         TextAlignment="Center"
-                         TextWrapping="Wrap" />
-              <TextBlock Margin="0,12,0,0"
-                         Foreground="#5F6368"
+                         TextAlignment="Center" />
+              <TextBlock Margin="0,14,0,0"
+                         Style="{StaticResource CueMuted}"
                          HorizontalAlignment="Center"
                          Text="点击开始后只会进入 FakeCaptureCoordinator，生成固定的虚构数据。"
-                         TextAlignment="Center"
-                         TextWrapping="Wrap" />
-              <Button Width="180"
-                      Margin="0,24,0,20"
-                      Padding="12,8"
+                         TextAlignment="Center" />
+              <Button Width="200"
+                      Margin="0,28,0,24"
                       Command="{Binding StartCommand}"
                       Content="开始 Fake 预览"
-                      FontSize="15" />
-              <Border Padding="14"
-                      Background="#FFF0F0F0"
-                      CornerRadius="8">
+                      Style="{StaticResource CueBtnPrimary}" />
+              <Border Padding="16,12" Style="{StaticResource CueCard}">
                 <StackPanel>
-                  <TextBlock FontWeight="SemiBold" Text="当前范围" />
-                  <TextBlock Margin="0,6,0,0"
-                             Foreground="#5F6368"
-                             Text="不定位前台窗口，不读取窗口标题，不访问微信进程，不进行真实捕获、OCR 或滚动。"
-                             TextWrapping="Wrap" />
+                  <TextBlock Style="{StaticResource CueBody}"
+                             FontWeight="SemiBold"
+                             Text="当前范围" />
+                  <TextBlock Margin="0,8,0,0"
+                             Style="{StaticResource CueMuted}"
+                             Text="不定位前台窗口，不读取窗口标题，不访问微信进程，不进行真实捕获、OCR 或滚动。" />
                 </StackPanel>
               </Border>
             </StackPanel>
           </Grid>
 
+          <!-- 目标确认页 -->
           <Grid Style="{StaticResource ConfirmingTargetPanelStyle}">
-            <StackPanel MaxWidth="640" HorizontalAlignment="Center">
-              <Border Padding="18"
-                      Background="#FFFFF5E6"
-                      BorderBrush="#FFE7C98B"
+            <StackPanel MaxWidth="620" HorizontalAlignment="Center">
+              <Border Padding="18,16"
+                      Background="{DynamicResource CueWarnSoft}"
+                      BorderBrush="{DynamicResource CueWarnBorder}"
                       BorderThickness="1"
                       CornerRadius="10">
                 <StackPanel>
-                  <TextBlock FontSize="17"
+                  <TextBlock FontSize="16"
                              FontWeight="SemiBold"
-                             Foreground="#6D4C16"
+                             Foreground="{DynamicResource CueWarnText}"
                              Text="这是完全虚构的目标，不是微信窗口" />
-                  <TextBlock Margin="0,10,0,0"
+                  <TextBlock Margin="0,12,0,0"
+                             Style="{StaticResource CueBody}"
                              FontWeight="SemiBold"
                              Text="来源：FakeCaptureCoordinator" />
-                  <TextBlock Margin="0,5,0,0">
+                  <TextBlock Margin="0,8,0,0" Style="{StaticResource CueMuted}">
                     <Run Text="应用名：" />
                     <Run Text="{Binding Target.ApplicationName}" />
                   </TextBlock>
-                  <TextBlock Margin="0,5,0,0">
+                  <TextBlock Margin="0,4,0,0" Style="{StaticResource CueMuted}">
                     <Run Text="窗口标题：" />
                     <Run Text="{Binding Target.WindowTitle}" />
                   </TextBlock>
-                  <TextBlock Margin="0,5,0,0">
+                  <TextBlock Margin="0,4,0,0" Style="{StaticResource CueMuted}">
                     <Run Text="窗口尺寸：" />
                     <Run Text="{Binding Target.Width}" />
                     <Run Text=" × " />
@@ -186,141 +179,148 @@
                   </TextBlock>
                 </StackPanel>
               </Border>
-              <TextBlock Margin="0,18,0,0"
-                         Foreground="#5F6368"
-                         Text="确认后将运行 3 秒倒计时并生成内存中的虚构 Transcript；不会绑定或验证任何 HWND。"
-                         TextWrapping="Wrap" />
-              <StackPanel Margin="0,22,0,0"
+              <TextBlock Margin="0,16,0,0"
+                         Style="{StaticResource CueMuted}"
+                         Text="确认后将运行 3 秒倒计时并生成内存中的虚构 Transcript；不会绑定或验证任何 HWND。" />
+              <StackPanel Margin="0,24,0,0"
                           HorizontalAlignment="Center"
                           Orientation="Horizontal">
-                <Button Margin="0,0,10,0"
-                        Padding="16,8"
+                <Button Margin="0,0,12,0"
                         Command="{Binding ConfirmTargetCommand}"
-                        Content="确认虚构目标并开始" />
-                <Button Padding="16,8"
-                        Command="{Binding CancelCommand}"
-                        Content="取消" />
+                        Content="确认虚构目标并开始"
+                        Style="{StaticResource CueBtnPrimary}" />
+                <Button Command="{Binding CancelCommand}"
+                        Content="取消"
+                        Style="{StaticResource CueBtnSecondary}" />
               </StackPanel>
             </StackPanel>
           </Grid>
 
+          <!-- 倒计时页 -->
           <Grid Style="{StaticResource CountdownPanelStyle}">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-              <TextBlock FontSize="72"
+              <TextBlock FontSize="84"
                          FontWeight="SemiBold"
-                         Foreground="#173B67"
+                         Foreground="{DynamicResource CuePrimary}"
                          HorizontalAlignment="Center"
                          Text="{Binding CountdownRemaining}" />
-              <TextBlock Margin="0,12,0,0"
-                         FontSize="17"
+              <TextBlock Margin="0,14,0,0"
+                         Style="{StaticResource CueTitle}"
                          HorizontalAlignment="Center"
                          Text="Fake 预览即将开始"
                          TextAlignment="Center" />
               <TextBlock Margin="0,8,0,0"
-                         Foreground="#5F6368"
+                         Style="{StaticResource CueMuted}"
                          HorizontalAlignment="Center"
                          Text="不会读取或操作微信；可以随时取消。"
                          TextAlignment="Center" />
-              <Button Width="120"
-                      Margin="0,24,0,0"
-                      Padding="12,8"
+              <Button Width="140"
+                      Margin="0,28,0,0"
                       Command="{Binding CancelCommand}"
-                      Content="取消" />
+                      Content="取消"
+                      Style="{StaticResource CueBtnSecondary}" />
             </StackPanel>
           </Grid>
 
+          <!-- 扫描页 -->
           <Grid Style="{StaticResource ScanningPanelStyle}">
-            <StackPanel MaxWidth="640" HorizontalAlignment="Center">
-              <ProgressBar Height="12"
-                           Margin="0,0,0,20"
+            <StackPanel MaxWidth="620" HorizontalAlignment="Center">
+              <ProgressBar Margin="0,0,0,22"
                            Maximum="1"
                            Minimum="0"
+                           Style="{StaticResource CueProgress}"
                            Value="{Binding Progress.Percent}" />
-              <TextBlock FontSize="20"
-                         FontWeight="SemiBold"
+              <TextBlock Style="{StaticResource CueTitle}"
                          HorizontalAlignment="Center"
                          Text="{Binding ProgressPhaseName}" />
               <TextBlock Margin="0,8,0,0"
-                         Foreground="#5F6368"
+                         Style="{StaticResource CueMuted}"
                          HorizontalAlignment="Center"
                          Text="{Binding Progress.Reason}"
-                         TextAlignment="Center"
-                         TextWrapping="Wrap" />
-              <UniformGrid Margin="0,28,0,18" Columns="3">
+                         TextAlignment="Center" />
+              <UniformGrid Margin="0,30,0,20" Columns="3">
                 <StackPanel>
-                  <TextBlock FontSize="24"
+                  <TextBlock FontSize="26"
+                             FontWeight="SemiBold"
+                             Foreground="{DynamicResource CueText}"
                              HorizontalAlignment="Center"
                              Text="{Binding Progress.ViewportCount}" />
-                  <TextBlock Foreground="#5F6368"
+                  <TextBlock Margin="0,4,0,0"
+                             Style="{StaticResource CueCaption}"
                              HorizontalAlignment="Center"
                              Text="视口" />
                 </StackPanel>
                 <StackPanel>
-                  <TextBlock FontSize="24"
+                  <TextBlock FontSize="26"
+                             FontWeight="SemiBold"
+                             Foreground="{DynamicResource CueText}"
                              HorizontalAlignment="Center"
                              Text="{Binding Progress.MessageCount}" />
-                  <TextBlock Foreground="#5F6368"
+                  <TextBlock Margin="0,4,0,0"
+                             Style="{StaticResource CueCaption}"
                              HorizontalAlignment="Center"
                              Text="消息" />
                 </StackPanel>
                 <StackPanel>
-                  <TextBlock FontSize="24"
+                  <TextBlock FontSize="26"
+                             FontWeight="SemiBold"
+                             Foreground="{DynamicResource CueText}"
                              HorizontalAlignment="Center"
                              Text="{Binding Progress.LowConfidenceCount}" />
-                  <TextBlock Foreground="#5F6368"
+                  <TextBlock Margin="0,4,0,0"
+                             Style="{StaticResource CueCaption}"
                              HorizontalAlignment="Center"
                              Text="存疑" />
                 </StackPanel>
               </UniformGrid>
-              <TextBlock Foreground="#5F6368"
+              <TextBlock Style="{StaticResource CueMuted}"
                          HorizontalAlignment="Center"
                          Text="{Binding ProgressDescription}" />
+              <StackPanel Margin="0,28,0,0"
+                          HorizontalAlignment="Center"
+                          Orientation="Horizontal">
+                <Button Margin="0,0,12,0"
+                        Command="{Binding PauseCommand}"
+                        Content="暂停"
+                        Style="{StaticResource CueBtnSecondary}" />
+                <Button Command="{Binding FinishPartialResultCommand}"
+                        Content="停止并整理已有结果"
+                        Style="{StaticResource CueBtnSecondary}" />
+              </StackPanel>
+            </StackPanel>
+          </Grid>
+
+          <!-- 暂停页 -->
+          <Grid Style="{StaticResource PausedPanelStyle}">
+            <StackPanel MaxWidth="580" HorizontalAlignment="Center" VerticalAlignment="Center">
+              <TextBlock Style="{StaticResource CueDisplay}"
+                         HorizontalAlignment="Center"
+                         Text="Fake 扫描已暂停" />
+              <TextBlock Margin="0,14,0,0"
+                         Style="{StaticResource CueMuted}"
+                         HorizontalAlignment="Center"
+                         Text="{Binding PauseReason}"
+                         TextAlignment="Center" />
+              <TextBlock Margin="0,8,0,0"
+                         Style="{StaticResource CueMuted}"
+                         HorizontalAlignment="Center"
+                         Text="暂停只影响本地虚构数据生成，不代表真实窗口的暂停能力。"
+                         TextAlignment="Center" />
               <StackPanel Margin="0,26,0,0"
                           HorizontalAlignment="Center"
                           Orientation="Horizontal">
-                <Button Margin="0,0,10,0"
-                        Padding="16,8"
-                        Command="{Binding PauseCommand}"
-                        Content="暂停" />
-                <Button Padding="16,8"
-                        Command="{Binding FinishPartialResultCommand}"
-                        Content="停止并整理已有结果" />
-              </StackPanel>
-            </StackPanel>
-          </Grid>
-
-          <Grid Style="{StaticResource PausedPanelStyle}">
-            <StackPanel MaxWidth="600" HorizontalAlignment="Center" VerticalAlignment="Center">
-              <TextBlock FontSize="22"
-                         FontWeight="SemiBold"
-                         HorizontalAlignment="Center"
-                         Text="Fake 扫描已暂停" />
-              <TextBlock Margin="0,12,0,0"
-                         Foreground="#5F6368"
-                         HorizontalAlignment="Center"
-                         Text="{Binding PauseReason}"
-                         TextAlignment="Center"
-                         TextWrapping="Wrap" />
-              <TextBlock Margin="0,8,0,0"
-                         Foreground="#5F6368"
-                         HorizontalAlignment="Center"
-                         Text="暂停只影响本地虚构数据生成，不代表真实窗口的暂停能力。"
-                         TextAlignment="Center"
-                         TextWrapping="Wrap" />
-              <StackPanel Margin="0,24,0,0"
-                          HorizontalAlignment="Center"
-                          Orientation="Horizontal">
-                <Button Margin="0,0,10,0"
-                        Padding="16,8"
+                <Button Margin="0,0,12,0"
                         Command="{Binding ResumeCommand}"
-                        Content="继续" />
-                <Button Padding="16,8"
-                        Command="{Binding FinishPartialResultCommand}"
-                        Content="整理已有结果" />
+                        Content="继续"
+                        Style="{StaticResource CueBtnPrimary}" />
+                <Button Command="{Binding FinishPartialResultCommand}"
+                        Content="整理已有结果"
+                        Style="{StaticResource CueBtnSecondary}" />
               </StackPanel>
             </StackPanel>
           </Grid>
 
+          <!-- 结果编辑页 -->
           <Grid Style="{StaticResource ResultPanelStyle}">
             <Grid.RowDefinitions>
               <RowDefinition Height="Auto" />
@@ -329,63 +329,61 @@
               <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
             <StackPanel Grid.Row="0">
-              <TextBlock FontSize="17"
-                         FontWeight="SemiBold"
-                         Text="结果预览（Fake 数据）" />
-              <TextBlock Margin="0,5,0,12"
-                         Foreground="#5F6368"
+              <TextBlock Style="{StaticResource CueTitle}" Text="结果预览（Fake 数据）" />
+              <TextBlock Margin="0,6,0,14"
+                         Style="{StaticResource CueMuted}"
                          Text="{Binding ResultSummary}" />
             </StackPanel>
             <TextBox Grid.Row="1"
                      MinHeight="260"
-                     Padding="10"
                      AcceptsReturn="True"
-                     FontFamily="Consolas"
-                     FontSize="14"
                      HorizontalScrollBarVisibility="Auto"
+                     Style="{StaticResource CueTextBox}"
                      Text="{Binding MarkdownText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                      TextWrapping="NoWrap"
                      VerticalScrollBarVisibility="Auto" />
             <TextBlock Grid.Row="2"
                        Margin="0,10,0,0"
-                       Foreground="#9A5B00"
+                       FontSize="13"
+                       Foreground="{DynamicResource CueWarnText}"
                        Text="{Binding UserMessage}"
                        TextWrapping="Wrap" />
             <StackPanel Grid.Row="3"
-                        Margin="0,14,0,0"
+                        Margin="0,16,0,0"
                         HorizontalAlignment="Right"
                         Orientation="Horizontal">
-              <Button Margin="0,0,8,0"
-                      Padding="14,8"
+              <Button Margin="0,0,10,0"
                       Command="{Binding CopyMarkdownCommand}"
-                      Content="{Binding CopyButtonTitle}" />
-              <Button Margin="0,0,8,0"
-                      Padding="14,8"
+                      Content="{Binding CopyButtonTitle}"
+                      Style="{StaticResource CueBtnPrimary}" />
+              <Button Margin="0,0,10,0"
                       Command="{Binding SaveMarkdownCommand}"
-                      Content="保存 Markdown" />
-              <Button Padding="14,8"
-                      Command="{Binding ClearResultCommand}"
-                      Content="清除并返回待机" />
+                      Content="保存 Markdown"
+                      Style="{StaticResource CueBtnSecondary}" />
+              <Button Command="{Binding ClearResultCommand}"
+                      Content="清除并返回待机"
+                      Style="{StaticResource CueBtnSecondary}" />
             </StackPanel>
           </Grid>
 
+          <!-- 错误页 -->
           <Grid Style="{StaticResource ErrorPanelStyle}">
-            <StackPanel MaxWidth="620" HorizontalAlignment="Center" VerticalAlignment="Center">
-              <TextBlock FontSize="22"
-                         FontWeight="SemiBold"
+            <StackPanel MaxWidth="600" HorizontalAlignment="Center" VerticalAlignment="Center">
+              <TextBlock Style="{StaticResource CueDisplay}"
                          HorizontalAlignment="Center"
                          Text="Fake 预览发生问题" />
               <TextBlock Margin="0,14,0,0"
-                         Foreground="#B3261E"
+                         FontSize="15"
+                         Foreground="{DynamicResource CueError}"
                          HorizontalAlignment="Center"
                          Text="{Binding ErrorMessage}"
                          TextAlignment="Center"
                          TextWrapping="Wrap" />
-              <Button Width="120"
-                      Margin="0,24,0,0"
-                      Padding="14,8"
+              <Button Width="140"
+                      Margin="0,26,0,0"
                       Command="{Binding ClearResultCommand}"
-                      Content="返回待机" />
+                      Content="返回待机"
+                      Style="{StaticResource CueBtnSecondary}" />
             </StackPanel>
           </Grid>
         </Grid>
