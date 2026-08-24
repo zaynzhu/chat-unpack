@@ -8,3 +8,5 @@ xcuserdata/
 windows/**/bin/
 windows/**/obj/
 windows/artifacts/
+windows/publish/
+.scandiag.log
