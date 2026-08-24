@@ -112,7 +112,7 @@ public sealed class WindowTargetLocator
     }
 
     var name = process.ProcessName;
-    if (name != "Weixin" && name != "WeChat")
+    if (name != "Weixin" && name != "WeChat" && name != "WeChatAppEx")
     {
       return null;
     }

@@ -297,8 +297,8 @@ public sealed class AppViewModel : INotifyPropertyChanged
     }
     else
     {
-      UserMessage = "请在 3 秒内切换到微信合并聊天记录窗口并将其置于前台…";
-      await Task.Delay(3000);
+      UserMessage = "请在 8 秒内切换到微信合并聊天记录窗口并将其置于前台…";
+      await Task.Delay(8000);
       UserMessage = null;
       var bound = new WindowTargetLocator().LocateTarget();
       if (bound is null)
