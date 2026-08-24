@@ -44,7 +44,7 @@
           <TextBlock Margin="0,8,0,0"
                      Foreground="{DynamicResource FixtureMutedBrush}">
             <Run Text="消息总数：" />
-            <Run Text="{Binding MessageCount}" />
+            <Run Text="{Binding MessageCount, Mode=OneWay}" />
             <Run Text=" · 完全虚构" />
           </TextBlock>
           <TextBlock Margin="0,4,0,0"
@@ -109,7 +109,7 @@
                   <TextBlock Margin="0,4,0,0"
                              Foreground="{DynamicResource FixtureMutedBrush}">
                     <Run Text="视口 " />
-                    <Run Text="{Binding ViewportIndex}" />
+                    <Run Text="{Binding ViewportIndex, Mode=OneWay}" />
                   </TextBlock>
                 </StackPanel>
 
