@@ -8,7 +8,8 @@ namespace ChatUnpack.Windows.Interop;
 // 失败时抛带 HRESULT 的异常，供 coordinator 记录到 Transcript 警告。
 internal static class Direct3D11Interop
 {
-  private static readonly Guid IDXGIDeviceGuid = new("7ec9e7dd-2899-4ee9-aa12-6cfbfcfb3b33");
+  // IDXGIDevice IID（从 Wine dxgi.idl 确认，实测 QueryInterface S_OK）
+  private static readonly Guid IDXGIDeviceGuid = new("54ec77fa-1377-44e6-8c32-88fd5f44c84c");
 
   [DllImport(
     "d3d11.dll",

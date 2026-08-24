@@ -1,142 +1,140 @@
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
-using System.Runtime.InteropServices.WindowsRuntime;
 
+using Windows.Foundation;
+using Windows.Graphics;
+using Windows.Graphics.Capture;
+using Windows.Graphics.DirectX;
+using Windows.Graphics.DirectX.Direct3D11;
 using Windows.Graphics.Imaging;
 
 using ChatUnpack.Windows.Interop;
 
 namespace ChatUnpack.Windows.Capture;
 
-// 单窗口单帧内存捕获。优先 PrintWindow(PW_RENDERFULLCONTENT，可截 WPF/DirectX 渲染内容)，
-// 失败回退 BitBlt。不依赖 D3D11/IDXGIDevice/Windows.Graphics.Capture（WGC 在部分环境互操作走不通）。
-// 不落盘，每帧后释放 GDI 资源。失败抛带原因的异常。
+// 单窗口单帧内存捕获，用 Windows.Graphics.Capture（WGC）。
+// WGC 能截 DirectX/Modern 渲染窗口（微信），不落盘，每帧后释放资源。
+// 失败抛带原因的异常。IDXGIDevice IID 从 Wine dxgi.idl 确认（54ec77fa）。
 public sealed class WindowsGraphicsCapturer
 {
+  private const int SingleFrameTimeoutMs = 3000;
+
   public async Task<SoftwareBitmap?> CaptureFrameAsync(WindowTarget target, CancellationToken cancellationToken)
   {
-    if (target.Hwnd == IntPtr.Zero)
+    if (target.Hwnd == IntPtr.Zero || target.PhysicalWidth <= 0 || target.PhysicalHeight <= 0)
     {
-      throw new InvalidOperationException("目标窗口句柄为空");
+      throw new InvalidOperationException("目标窗口尺寸无效");
     }
 
-    WinUserNative.GetWindowRect(target.Hwnd, out WinUserNative.RECT window);
-    var width = window.Width;
-    var height = window.Height;
-    if (width <= 0 || height <= 0)
+    if (!D3D11Native.TryCreateD3D11Device(out IntPtr d3d11Device))
     {
-      throw new InvalidOperationException($"窗口尺寸无效 {width}x{height}（可能最小化）");
+      throw new InvalidOperationException("D3D11 硬件设备创建失败");
     }
 
-    var hdcWindow = GdiNative.GetWindowDC(target.Hwnd);
-    if (hdcWindow == IntPtr.Zero)
-    {
-      throw new InvalidOperationException("GetWindowDC 失败");
-    }
-
-    IntPtr hdcMem = IntPtr.Zero;
-    IntPtr hBitmap = IntPtr.Zero;
     try
     {
-      hdcMem = GdiNative.CreateCompatibleDC(hdcWindow);
-      if (hdcMem == IntPtr.Zero)
+      var direct3DDevice = Direct3D11Interop.CreateDirect3DDevice(d3d11Device);
+      if (direct3DDevice is null)
       {
-        throw new InvalidOperationException("CreateCompatibleDC 失败");
+        throw new InvalidOperationException("IDirect3DDevice 创建失败（CreateDirect3D11DeviceFromDXGIDevice）");
       }
 
-      hBitmap = GdiNative.CreateCompatibleBitmap(hdcWindow, width, height);
-      if (hBitmap == IntPtr.Zero)
+      var item = GraphicsCaptureInterop.CreateItemForWindow(target.Hwnd);
+      if (item is null)
       {
-        throw new InvalidOperationException("CreateCompatibleBitmap 失败");
+        throw new InvalidOperationException("GraphicsCaptureItem 创建失败（HWND 可能不可捕获）");
       }
 
-      var oldObject = GdiNative.SelectObject(hdcMem, hBitmap);
-      var ok = GdiNative.PrintWindow(target.Hwnd, hdcMem, GdiNative.PW_RENDERFULLCONTENT);
-      if (!ok)
+      var size = new SizeInt32
       {
-        ok = GdiNative.BitBlt(hdcMem, 0, 0, width, height, hdcWindow, 0, 0, GdiNative.SRCCOPY);
-      }
+        Width = target.PhysicalWidth,
+        Height = target.PhysicalHeight
+      };
 
-      GdiNative.SelectObject(hdcMem, oldObject);
-      if (!ok)
+      Direct3D11CaptureFramePool? framePool = null;
+      GraphicsCaptureSession? session = null;
+      try
       {
-        throw new InvalidOperationException("PrintWindow 与 BitBlt 均失败");
-      }
+        framePool = Direct3D11CaptureFramePool.Create(
+          direct3DDevice,
+          DirectXPixelFormat.B8G8R8A8UIntNormalized,
+          1,
+          size);
+        session = framePool.CreateCaptureSession(item);
 
-      using var bitmap = Image.FromHbitmap(hBitmap) as Bitmap;
-      if (bitmap is null)
+        var tcs = new TaskCompletionSource<SoftwareBitmap?>();
+        TypedEventHandler<Direct3D11CaptureFramePool, object> handler = (pool, _) =>
+        {
+          if (tcs.Task.IsCompleted)
+          {
+            return;
+          }
+
+          try
+          {
+            var frame = pool.TryGetNextFrame();
+            if (frame is null)
+            {
+              return;
+            }
+
+            var surface = frame.Surface;
+            var op = SoftwareBitmap.CreateCopyFromSurfaceAsync(surface, BitmapAlphaMode.Premultiplied);
+            op.Completed = (operation, status) =>
+            {
+              try
+              {
+                tcs.TrySetResult(status == AsyncStatus.Completed ? operation.GetResults() : null);
+              }
+              catch
+              {
+                tcs.TrySetResult(null);
+              }
+              finally
+              {
+                frame.Dispose();
+              }
+            };
+          }
+          catch (Exception exception)
+          {
+            tcs.TrySetException(exception);
+          }
+        };
+
+        framePool.FrameArrived += handler;
+        using var registration = cancellationToken.Register(() => tcs.TrySetCanceled());
+        try
+        {
+          session.StartCapture();
+          var winner = await Task.WhenAny(tcs.Task, Task.Delay(SingleFrameTimeoutMs, cancellationToken));
+          if (winner != tcs.Task)
+          {
+            throw new InvalidOperationException("捕获帧超时（3 秒内无帧到达）");
+          }
+
+          var result = await tcs.Task;
+          if (result is null)
+          {
+            throw new InvalidOperationException("捕获帧为空（CreateCopyFromSurfaceAsync 未完成）");
+          }
+
+          return result;
+        }
+        finally
+        {
+          framePool.FrameArrived -= handler;
+        }
+      }
+      finally
       {
-        throw new InvalidOperationException("Image.FromHbitmap 返回 null");
+        session?.Dispose();
+        framePool?.Dispose();
       }
-
-      return await BitmapToSoftwareBitmapAsync(bitmap);
     }
     finally
     {
-      if (hBitmap != IntPtr.Zero)
-      {
-        GdiNative.DeleteObject(hBitmap);
-      }
-
-      if (hdcMem != IntPtr.Zero)
-      {
-        GdiNative.DeleteDC(hdcMem);
-      }
-
-      GdiNative.ReleaseDC(target.Hwnd, hdcWindow);
+      Marshal.Release(d3d11Device);
     }
-  }
-
-  // System.Drawing.Bitmap(BGRA) → WinRT SoftwareBitmap，供 Windows.Media.Ocr 使用。
-  // 放大 2x 提升 OCR 对小字与标点（如冒号）的识别率。
-  private static Task<SoftwareBitmap> BitmapToSoftwareBitmapAsync(Bitmap bitmap)
-  {
-    const int scale = 2;
-    using var enlarged = new Bitmap(bitmap.Width * scale, bitmap.Height * scale, PixelFormat.Format32bppArgb);
-    using (var g = Graphics.FromImage(enlarged))
-    {
-      g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-      g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
-      g.DrawImage(bitmap, 0, 0, enlarged.Width, enlarged.Height);
-    }
-
-    var width = enlarged.Width;
-    var height = enlarged.Height;
-    var rect = new Rectangle(0, 0, width, height);
-    var data = enlarged.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
-    byte[] bytes;
-    try
-    {
-      bytes = new byte[data.Stride * data.Height];
-      Marshal.Copy(data.Scan0, bytes, 0, bytes.Length);
-    }
-    finally
-    {
-      enlarged.UnlockBits(data);
-    }
-
-    // GDI 32bpp ARGB 在 Windows 上的内存布局是 BGRA，与 SoftwareBitmap Bgra8 一致。
-    // 若行 stride 大于 width*4（对齐填充），需要逐行紧凑复制。
-    var tightBytes = bytes;
-    if (data.Stride != width * 4)
-    {
-      tightBytes = new byte[width * 4 * height];
-      for (var row = 0; row < height; row++)
-      {
-        Array.Copy(bytes, row * data.Stride, tightBytes, row * width * 4, width * 4);
-      }
-    }
-
-    var buffer = new global::Windows.Storage.Streams.Buffer((uint)tightBytes.Length);
-    using (var stream = buffer.AsStream())
-    {
-      stream.Write(tightBytes, 0, tightBytes.Length);
-    }
-
-    var softwareBitmap = new SoftwareBitmap(BitmapPixelFormat.Bgra8, width, height);
-    softwareBitmap.CopyFromBuffer(buffer);
-    return Task.FromResult(softwareBitmap);
   }
 
   // 按消息区 inset 计算裁剪区域（像素，相对全图）。
