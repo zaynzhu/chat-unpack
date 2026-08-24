@@ -4,9 +4,9 @@
 >
 > 已验证平台：macOS 13+、Apple Silicon（`arm64`）
 >
-> 开发中平台：Windows 11 23H2+、x64；尚未编译、运行或验收
+> 开发中平台：Windows 11 23H2+、x64；源码已首次实机基线验证（restore/Core/构建/启动），完整人工验收与真实微信集成未完成
 >
-> 状态日期：2026-08-23
+> 状态日期：2026-08-24
 
 本文档只记录当前 checkout 能证明的实现、验证证据、已知限制和剩余验收，不充当版本流水账。产品和隐私约束见 [DESIGN.md](DESIGN.md)。
 
@@ -56,6 +56,29 @@ Windows v0.1 的代码开发边界、阶段和验收层级见 [WINDOWS-V0.1-PLAN
 - 当前 Mac 没有安装或调用 .NET、Windows SDK、虚拟机或 PowerShell 7。
 
 首次 Windows 验收命令和通过标准见 [Windows README](../windows/README.md)。
+
+### 2.2 Windows 首次实机基线验证
+
+2026-08-24 在真实 Windows 11（10.0.26200，x64）上用 .NET 8 SDK（8.0.424，用户级便携安装，未写入系统 PATH）执行了首次基线验证。基点 commit `37c5756`。
+
+- restore：通过，4 个项目全部还原。
+- Core Test Runner：实际报告 **124 项**检查通过，退出码 0。比 2.1 节预估的 122 处静态调用多 2 项（部分检查在循环中执行），以实机输出为准。
+- Debug 构建：通过，0 警告 0 错误，4 个项目全部成功，平台 x64 + win-x64。
+- Release 构建：通过，0 警告 0 错误。
+- 隐私静态扫描：`HttpClient|WebRequest|Socket|SQLite|ReadProcessMemory|SendInput|SetWindowsHookEx` 等模式无命中，无第三方 `PackageReference`。
+- Fake 主应用：启动通过；核心状态链路 `Idle → ConfirmingTarget → Countdown → Scanning → ResultEditing` 通过 UI Automation 自动化点击触发、并用外部视觉模型（`minimax-m3:cloud`，经 `model-router` 中转）识别窗口截图核对。结果页正确生成 Markdown，格式（序号、发言人、时间、类型、正文）与 macOS Core 等价；状态栏显示"状态：完整；消息：6"。全程保留 Fake 边界提示（"不是微信""虚构""Fake 模式不是微信验收"）。
+- FixtureHost：启动通过（见下文修复）；静态界面经视觉模型核对：窗口标题、消息总数 200、"完全虚构"、首条编号 001、中文昵称、"切换深色"按钮均符合预期。
+- 验证方法说明：UI 交互用 UI Automation 自动化点击 + 外部视觉模型识别截图辅助核对，**非 [WINDOWS-FIRST-RUN-HANDOFF.md](WINDOWS-FIRST-RUN-HANDOFF.md) 第 12/13 节定义的纯人工走查**；视觉模型识别存在微小误差（如"视口"误读为"讬口"），不影响结构判断。
+
+修复（本次验证中发现并修复）：
+
+- `windows/src/ChatUnpack.FixtureHost.Windows/MainWindow.xaml` 中 `MessageCount`、`ViewportIndex` 两处 `Run.Text` 绑定到只读属性。WPF `Run.Text` 依赖属性默认绑定模式为 `TwoWay`，对只读属性抛 `InvalidOperationException`，导致 FixtureHost 启动即崩溃且无 stderr 输出。修复为显式 `Mode=OneWay`。这是 WPF 平台特有陷阱，macOS SwiftUI 无对应问题。修复后 Debug/Release 重新构建通过、Core 124 项回归通过、FixtureHost 启动通过。
+
+仍未验证（不记为已通过）：
+
+- Fake 主应用完整 16 步人工清单中的复制、保存、清空、暂停/继续、提前生成部分结果。
+- FixtureHost 完整 12 步人工清单中的滚动到末尾（第 200 条）、第 58/59 条重复保留、深色切换、最小窗口尺寸。
+- Windows OCR、单窗口捕获、UI Automation 滚动、扫描协调、publish 和官方微信 4.x 验收。
 
 ## 3. 标准验证命令
 
@@ -122,8 +145,8 @@ rg -n -i 'URLSession|URLRequest|NWConnection|socket|upload|telemetry|sqlite|mach
 - 开机自启在不同应用位置和系统设置状态下的完整验证。
 - 完全缺失昵称 OCR 时的身份恢复；当前只能输出“未知发言人”。
 - 图片、表情、语音和视频的可靠视觉分类；当前无可靠信号时输出通用非文字类型。
-- Windows x64 原生客户端的首次 restore、Debug/Release 构建、核心检查和 publish。
-- Windows WPF、FixtureHost、系统 OCR、单窗口捕获、滚动、暂停和导出的真实桌面验收。
+- Windows publish、真实桌面 OCR、单窗口捕获、滚动、暂停和导出的完整人工验收（首次 restore/Debug/Release 构建/核心检查/启动已通过，见 2.2）。
+- Fake 主应用完整状态流（复制、保存、清空、暂停）和 FixtureHost 完整滚动/主题/尺寸的人工走查。
 - 官方微信 Windows 4.x 的进程身份、窗口结构、消息区域和滚动行为校准。
 
 ## 7. 已知风险
