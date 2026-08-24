@@ -13,7 +13,7 @@ namespace ChatUnpack.Windows.Capture;
 
 // 单窗口单帧内存捕获。用 Windows.Graphics.Capture 绑定已确认 HWND，
 // 抓一帧转 SoftwareBitmap，不落盘。资源在每帧后释放。
-// 行为参照 macOS WindowCapturer（3 秒单帧超时、消息区 inset、FNV-1a 指纹）。
+// 失败时抛 InvalidOperationException 带原因，供 coordinator 记录到 Transcript 警告。
 public sealed class WindowsGraphicsCapturer
 {
   private const int SingleFrameTimeoutMs = 3000;
@@ -22,12 +22,12 @@ public sealed class WindowsGraphicsCapturer
   {
     if (target.Hwnd == IntPtr.Zero || target.PhysicalWidth <= 0 || target.PhysicalHeight <= 0)
     {
-      return null;
+      throw new InvalidOperationException("目标窗口尺寸无效");
     }
 
     if (!D3D11Native.TryCreateD3D11Device(out IntPtr d3d11Device))
     {
-      return null;
+      throw new InvalidOperationException("D3D11 硬件设备创建失败");
     }
 
     try
@@ -35,13 +35,13 @@ public sealed class WindowsGraphicsCapturer
       var direct3DDevice = Direct3D11Interop.CreateDirect3DDevice(d3d11Device);
       if (direct3DDevice is null)
       {
-        return null;
+        throw new InvalidOperationException("IDirect3DDevice 创建失败（CreateDirect3D11DeviceFromDXGIDevice）");
       }
 
       var item = GraphicsCaptureInterop.CreateItemForWindow(target.Hwnd);
       if (item is null)
       {
-        return null;
+        throw new InvalidOperationException("GraphicsCaptureItem 创建失败（HWND 可能不可捕获或已被 cloaked）");
       }
 
       var size = new SizeInt32
@@ -109,10 +109,16 @@ public sealed class WindowsGraphicsCapturer
           var winner = await Task.WhenAny(tcs.Task, Task.Delay(SingleFrameTimeoutMs, cancellationToken));
           if (winner != tcs.Task)
           {
-            return null;
+            throw new InvalidOperationException("捕获帧超时（3 秒内无帧到达）");
           }
 
-          return await tcs.Task;
+          var result = await tcs.Task;
+          if (result is null)
+          {
+            throw new InvalidOperationException("捕获帧为空（CreateCopyFromSurfaceAsync 未完成）");
+          }
+
+          return result;
         }
         finally
         {
@@ -125,10 +131,6 @@ public sealed class WindowsGraphicsCapturer
         framePool?.Dispose();
       }
     }
-    catch
-    {
-      return null;
-    }
     finally
     {
       Marshal.Release(d3d11Device);
@@ -136,8 +138,6 @@ public sealed class WindowsGraphicsCapturer
   }
 
   // 按消息区 inset 计算裁剪区域（像素，相对全图）。
-  // 不实际裁剪 SoftwareBitmap（API 复杂且易错），4b OCR 全图后按此区域过滤 OcrLine 并重新归一化。
-  // 照搬 macOS WindowCapturer.messageRegion 的 inset 比例。
   public MessageRegionBounds GetMessageRegionBounds(SoftwareBitmap full, CaptureLayout layout)
   {
     if (full is null || full.PixelWidth <= 0 || full.PixelHeight <= 0)

@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 
 using ChatUnpack.Core.Assembly;
 using ChatUnpack.Core.Domain;
+using ChatUnpack.Windows.Capture;
 
 namespace ChatUnpack.Windows;
 
@@ -12,12 +13,7 @@ public sealed record FakeCaptureTarget(
   int Height,
   bool IsFake = true);
 
-public sealed record FakeCaptureUpdate(
-  ScanProgress Progress,
-  Transcript? Transcript = null,
-  bool IsFinished = false);
-
-public sealed class FakeCaptureCoordinator
+public sealed class FakeCaptureCoordinator : ICaptureCoordinator
 {
   private volatile bool isPaused;
 
@@ -31,7 +27,7 @@ public sealed class FakeCaptureCoordinator
     isPaused = false;
   }
 
-  public async IAsyncEnumerable<FakeCaptureUpdate> RunAsync(
+  public async IAsyncEnumerable<CaptureUpdate> RunAsync(
     [EnumeratorCancellation] CancellationToken cancellationToken = default)
   {
     var assembler = new TranscriptAssembler(
@@ -120,7 +116,7 @@ public sealed class FakeCaptureCoordinator
     return Task.Delay(250, cancellationToken);
   }
 
-  private static FakeCaptureUpdate Update(
+  private static CaptureUpdate Update(
     ScanPhase phase,
     int viewportCount,
     int messageCount,
@@ -130,14 +126,8 @@ public sealed class FakeCaptureCoordinator
     Transcript? transcript = null,
     bool isFinished = false)
   {
-    return new FakeCaptureUpdate(
-      new ScanProgress(
-        phase,
-        viewportCount,
-        messageCount,
-        lowConfidenceCount,
-        percent,
-        reason),
+    return new CaptureUpdate(
+      new ScanProgress(phase, viewportCount, messageCount, lowConfidenceCount, percent, reason),
       transcript,
       isFinished);
   }

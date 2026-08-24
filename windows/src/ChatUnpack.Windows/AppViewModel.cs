@@ -8,6 +8,7 @@ using Microsoft.Win32;
 
 using ChatUnpack.Core.Domain;
 using ChatUnpack.Core.Export;
+using ChatUnpack.Windows.Capture;
 
 namespace ChatUnpack.Windows;
 
@@ -25,12 +26,13 @@ public enum AppState
 public sealed class AppViewModel : INotifyPropertyChanged
 {
   private readonly FakeCaptureCoordinator fakeCaptureCoordinator = new();
+  private ICaptureCoordinator? captureCoordinator;
   private readonly MarkdownRenderer markdownRenderer = new();
   private readonly MarkdownChunker markdownChunker = new();
   private readonly List<string> copyParts = [];
   private CancellationTokenSource? operationCancellation;
   private AppState state = AppState.Idle;
-  private FakeCaptureTarget? target;
+  private CaptureTarget? target;
   private int countdownRemaining;
   private ScanProgress progress = new(ScanPhase.Capturing);
   private Transcript? transcript;
@@ -44,10 +46,10 @@ public sealed class AppViewModel : INotifyPropertyChanged
 
   public AppViewModel()
   {
-    StartCommand = new RelayCommand(Start, () => State == AppState.Idle);
+    StartCommand = new RelayCommand(() => { _ = StartAsync(); }, () => State == AppState.Idle);
     ConfirmTargetCommand = new RelayCommand(
       BeginCountdown,
-      () => State == AppState.ConfirmingTarget && Target?.IsFake == true);
+      () => State == AppState.ConfirmingTarget && Target is not null);
     CancelCommand = new RelayCommand(
       CancelCurrentFlow,
       () => State is AppState.ConfirmingTarget
@@ -117,7 +119,7 @@ public sealed class AppViewModel : INotifyPropertyChanged
     _ => string.Empty
   };
 
-  public FakeCaptureTarget? Target
+  public CaptureTarget? Target
   {
     get => target;
     private set => SetField(ref target, value);
@@ -251,26 +253,71 @@ public sealed class AppViewModel : INotifyPropertyChanged
     }
   }
 
-  private void Start()
+  private async Task StartAsync()
   {
     if (State != AppState.Idle)
     {
       return;
     }
 
+    try
+    {
     ErrorMessage = string.Empty;
     UserMessage = null;
-    Target = new FakeCaptureTarget(
-      "ChatUnpack FixtureHost（完全虚构）",
-      "Windows v0.1 虚构合并聊天记录窗口",
-      960,
-      640);
+
+    var preflight = new WindowsPreflightService().Check();
+    if (!preflight.IsPassed)
+    {
+      ErrorMessage = $"运行条件不满足：{preflight.FailureMessage}";
+      State = AppState.Error;
+      return;
+    }
+
+    if (preflight.IsFixtureMode)
+    {
+      UserMessage = "请在 3 秒内切换到 FixtureHost 窗口并将其置于前台…";
+      await Task.Delay(3000);
+      UserMessage = null;
+      var bound = new WindowTargetLocator().LocateFixtureTarget();
+      if (bound is null)
+      {
+        ErrorMessage = "未找到前台 FixtureHost 窗口；请先把 FixtureHost 窗口放到前台再开始。";
+        State = AppState.Error;
+        return;
+      }
+
+      Target = new CaptureTarget(
+        bound.ApplicationName,
+        bound.WindowTitle,
+        bound.PhysicalWidth,
+        bound.PhysicalHeight,
+        IsFixture: true,
+        bound);
+      captureCoordinator = new WindowsCaptureCoordinator(bound);
+    }
+    else
+    {
+      Target = new CaptureTarget(
+        "ChatUnpack FixtureHost（完全虚构）",
+        "Windows v0.1 虚构合并聊天记录窗口",
+        960,
+        640,
+        IsFixture: false);
+      captureCoordinator = fakeCaptureCoordinator;
+    }
+
     State = AppState.ConfirmingTarget;
+    }
+    catch (Exception exception)
+    {
+      ErrorMessage = $"启动失败：{exception.Message}";
+      State = AppState.Error;
+    }
   }
 
   private void BeginCountdown()
   {
-    if (State != AppState.ConfirmingTarget || Target?.IsFake != true)
+    if (State != AppState.ConfirmingTarget || Target is null)
     {
       return;
     }
@@ -314,7 +361,7 @@ public sealed class AppViewModel : INotifyPropertyChanged
   {
     try
     {
-      await foreach (var update in fakeCaptureCoordinator.RunAsync(cancellationToken))
+      await foreach (var update in captureCoordinator!.RunAsync(cancellationToken))
       {
         Progress = update.Progress;
         if (update.Transcript is not null)
@@ -361,7 +408,7 @@ public sealed class AppViewModel : INotifyPropertyChanged
       return;
     }
 
-    fakeCaptureCoordinator.Pause();
+    captureCoordinator?.Pause();
     PauseReason = "已按下暂停；Fake 协调器不会继续生成下一视口。";
     Progress = new ScanProgress(
       ScanPhase.Paused,
@@ -380,7 +427,7 @@ public sealed class AppViewModel : INotifyPropertyChanged
       return;
     }
 
-    fakeCaptureCoordinator.Resume();
+    captureCoordinator?.Resume();
     UserMessage = null;
     State = AppState.Scanning;
   }
@@ -393,7 +440,7 @@ public sealed class AppViewModel : INotifyPropertyChanged
     }
 
     UserMessage = "正在停止 Fake 扫描并整理已生成内容…";
-    fakeCaptureCoordinator.Resume();
+    captureCoordinator?.Resume();
     operationCancellation?.Cancel();
   }
 
@@ -507,7 +554,7 @@ public sealed class AppViewModel : INotifyPropertyChanged
     operationCancellation?.Cancel();
     operationCancellation?.Dispose();
     operationCancellation = null;
-    fakeCaptureCoordinator.Resume();
+    captureCoordinator?.Resume();
     Transcript = null;
     MarkdownText = string.Empty;
     copySource = string.Empty;
@@ -525,7 +572,7 @@ public sealed class AppViewModel : INotifyPropertyChanged
   {
     operationCancellation?.Dispose();
     operationCancellation = null;
-    fakeCaptureCoordinator.Resume();
+    captureCoordinator?.Resume();
     Target = null;
     CountdownRemaining = 0;
     UserMessage = null;
