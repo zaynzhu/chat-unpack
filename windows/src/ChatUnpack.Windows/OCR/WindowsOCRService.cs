@@ -1,3 +1,5 @@
+using System.Text;
+using System.Text.RegularExpressions;
 using Windows.Globalization;
 using Windows.Graphics.Imaging;
 using Windows.Media.Ocr;
@@ -21,6 +23,23 @@ public sealed class WindowsOCRService
   }
 
   public bool IsAvailable => engine is not null;
+
+  // Windows OCR 对小字标点的常见噪声：冒号两边加空格（10 : 00）、日期连字符识成句点（2026.01.01）。
+  // 在适配器层规整回 TimestampParser 期望的格式，不改 Core（保持与 macOS 等价）。
+  private static string NormalizeOcrText(string text)
+  {
+    if (string.IsNullOrEmpty(text))
+    {
+      return text;
+    }
+
+    text = text.Normalize(NormalizationForm.FormKC);
+    text = text.Replace('：', ':');
+    text = text.Replace("°C", ":");
+    text = Regex.Replace(text, @"\s*:\s*", ":");
+    text = Regex.Replace(text, @"(\d{4})\s*[\.．]\s*(\d{1,2})\s*[\.．]\s*(\d{1,2})", "$1-$2-$3");
+    return text;
+  }
 
   private static OcrEngine? CreateChineseEngine()
   {
@@ -60,7 +79,7 @@ public sealed class WindowsOCRService
 
       foreach (var ocrLine in result.Lines)
       {
-        var text = ocrLine.Text;
+        var text = NormalizeOcrText(ocrLine.Text);
         if (string.IsNullOrWhiteSpace(text))
         {
           continue;

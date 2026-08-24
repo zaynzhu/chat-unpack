@@ -89,12 +89,22 @@ public sealed class WindowsGraphicsCapturer
   }
 
   // System.Drawing.Bitmap(BGRA) → WinRT SoftwareBitmap，供 Windows.Media.Ocr 使用。
+  // 放大 2x 提升 OCR 对小字与标点（如冒号）的识别率。
   private static Task<SoftwareBitmap> BitmapToSoftwareBitmapAsync(Bitmap bitmap)
   {
-    var width = bitmap.Width;
-    var height = bitmap.Height;
+    const int scale = 2;
+    using var enlarged = new Bitmap(bitmap.Width * scale, bitmap.Height * scale, PixelFormat.Format32bppArgb);
+    using (var g = Graphics.FromImage(enlarged))
+    {
+      g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+      g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+      g.DrawImage(bitmap, 0, 0, enlarged.Width, enlarged.Height);
+    }
+
+    var width = enlarged.Width;
+    var height = enlarged.Height;
     var rect = new Rectangle(0, 0, width, height);
-    var data = bitmap.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+    var data = enlarged.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
     byte[] bytes;
     try
     {
@@ -103,7 +113,7 @@ public sealed class WindowsGraphicsCapturer
     }
     finally
     {
-      bitmap.UnlockBits(data);
+      enlarged.UnlockBits(data);
     }
 
     // GDI 32bpp ARGB 在 Windows 上的内存布局是 BGRA，与 SoftwareBitmap Bgra8 一致。
