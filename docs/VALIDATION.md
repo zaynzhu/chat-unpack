@@ -4,13 +4,15 @@
 >
 > 已验证平台：macOS 13+、Apple Silicon（`arm64`）
 >
-> 开发中平台：Windows 11 23H2+、x64；源码已首次实机基线验证（restore/Core/构建/启动），完整人工验收与真实微信集成未完成
+> 开发中平台：Windows 11 23H2+、x64；已编译/运行/部分验证（基线通过 + FixtureHost 200 条端到端 257 条 + WGC 修复），真实微信 L4 验收未完成
 >
-> 状态日期：2026-08-24
+> 状态日期：2026-08-25
 
 本文档只记录当前 checkout 能证明的实现、验证证据、已知限制和剩余验收，不充当版本流水账。产品和隐私约束见 [DESIGN.md](DESIGN.md)。
 
 Windows v0.1 的代码开发边界、阶段和验收层级见 [WINDOWS-V0.1-PLAN.md](WINDOWS-V0.1-PLAN.md)。真实 Windows 首次执行顺序、人工检查项和结果记录模板见 [WINDOWS-FIRST-RUN-HANDOFF.md](WINDOWS-FIRST-RUN-HANDOFF.md)。当前 Mac 不安装 Windows 开发环境，因此任何 Windows 源码在首次 Windows 11 构建前都不能记为已实现或已验证。
+
+**2026-08-24/25 更新**：在真实 Windows 11（10.0.26200，x64）上已完成基线验证 + 真实捕获链路 6 阶段实现 + FixtureHost 200 条端到端 + WGC 修复。详见 2.2-2.3 节。
 
 ## 1. 当前已实现
 
@@ -80,6 +82,27 @@ Windows v0.1 的代码开发边界、阶段和验收层级见 [WINDOWS-V0.1-PLAN
 - FixtureHost 完整 12 步人工清单中的滚动到末尾（第 200 条）、第 58/59 条重复保留、深色切换、最小窗口尺寸。
 - Windows OCR、单窗口捕获、UI Automation 滚动、扫描协调、publish 和官方微信 4.x 验收。
 
+### 2.3 Windows 真实捕获链路实现与 FixtureHost 端到端
+
+2026-08-24/25 在真实 Windows 11 上实现了完整真实捕获链路（6 阶段），FixtureHost 200 条端到端已跑通：
+
+- **3a OCR 坐标转换**：纯函数 + 12 项测试（Core 136 项总计）。
+- **3b Preflight**：Win 版本/x64/D3D11/zh OCR/非管理员检查。
+- **4a 捕获/指纹/稳定帧**：WGC 单帧捕获 + FNV-1a 指纹 + 14 轮稳定帧。WGC 的 IDXGIDevice IID 从 Wine dxgi.idl 确认正确值 `54ec77fa-1377-44e6-8c32-88fd5f44c84c`（之前手写的 `7ec9e7dd` 完全错误，QueryInterface 返回 E_NOINTERFACE）。修复后 WGC 互操作链路打通。
+- **4b 单视口端到端**：BitBlt/PrintWindow 兜底捕获 + Windows.Media.Ocr 适配（含标点噪声规整：冒号空格/日期点→连字符/°C→冒号）+ 2x 放大提升识别率 + MessageParser 切分 3 条消息。
+- **5a 滚动+输入门闩**：UI Automation ScrollPattern + SendInput 滚轮回退 + SetWindowsHookEx 低级输入监听（只存布尔，不记录键值/坐标）。
+- **5b 完整循环**：回顶→多视口(捕获/OCR/拼接/滚动)→到底→恢复→完成。FixtureHost 200 条端到端跑通：67 视口逐步滚动到底，产出 257 条消息，状态完整。滚动 step 修正为 65% 视口高度（之前 65% 可滚动范围导致 2 步到底早停）。
+- **UI 美化**：App.xaml 全局样式（现代极简，中性灰 + 深靛强调色）。
+- **真实微信 L4 路径**：已放开（LocateTarget 接受 Weixin/WeChat/WeChatAppEx 进程 + 8 秒切窗口延迟），但真实微信验收未完成（PrintWindow 对微信 DirectX 渲染黑屏；WGC 已修复但真实微信滚动/消息区 inset/OCR 标点需校准）。
+- **self-contained publish**：`dotnet publish -r win-x64 --self-contained`，双击 exe 不依赖系统 .NET。
+- **System.Drawing.Common**：官方 NuGet 包，用于 BitBlt 路径 HBITMAP→Bitmap 转换。非第三方运行时依赖。
+
+仍未验证（不记为已通过）：
+
+- 真实微信 L4：前台切窗口时机、微信滚动（无 ScrollPattern）、消息区 inset 校准、OCR 标点噪声。
+- FixtureHost 完整人工清单（复制/保存/清空/暂停/58-59 重复/深色切换/最小尺寸）。
+- Windows CI、publish 签名、官方微信 4.x 兼容。
+
 ## 3. 标准验证命令
 
 ```bash
@@ -145,9 +168,9 @@ rg -n -i 'URLSession|URLRequest|NWConnection|socket|upload|telemetry|sqlite|mach
 - 开机自启在不同应用位置和系统设置状态下的完整验证。
 - 完全缺失昵称 OCR 时的身份恢复；当前只能输出“未知发言人”。
 - 图片、表情、语音和视频的可靠视觉分类；当前无可靠信号时输出通用非文字类型。
-- Windows publish、真实桌面 OCR、单窗口捕获、滚动、暂停和导出的完整人工验收（首次 restore/Debug/Release 构建/核心检查/启动已通过，见 2.2）。
+- Windows publish、真实桌面 OCR、单窗口捕获、滚动、暂停和导出的完整人工验收（首次 restore/Debug/Release 构建/核心检查/启动已通过，见 2.2；FixtureHost 200 条端到端已跑通，见 2.3）。
 - Fake 主应用完整状态流（复制、保存、清空、暂停）和 FixtureHost 完整滚动/主题/尺寸的人工走查。
-- 官方微信 Windows 4.x 的进程身份、窗口结构、消息区域和滚动行为校准。
+- 官方微信 Windows 4.x 的进程身份、窗口结构、消息区域和滚动行为校准（路径已放开但验收未完成，见 2.3）。
 
 ## 7. 已知风险
 

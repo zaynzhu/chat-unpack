@@ -85,19 +85,23 @@ public sealed class WindowTargetLocator
   public WindowTarget? LocateTarget()
   {
     var hwnd = WinUserNative.GetForegroundWindow();
+    ScanDiag.Log($"LocateTarget: 前台 hwnd={hwnd}");
     if (hwnd == IntPtr.Zero || !WinUserNative.IsWindowVisible(hwnd))
     {
+      ScanDiag.Log("LocateTarget: 前台不可见或空");
       return null;
     }
 
     if (hwnd == WinUserNative.GetShellWindow())
     {
+      ScanDiag.Log("LocateTarget: 前台是桌面");
       return null;
     }
 
     WinUserNative.GetWindowThreadProcessId(hwnd, out uint pid);
     if ((int)pid == Process.GetCurrentProcess().Id)
     {
+      ScanDiag.Log("LocateTarget: 前台是自己");
       return null;
     }
 
@@ -108,23 +112,29 @@ public sealed class WindowTargetLocator
     }
     catch
     {
+      ScanDiag.Log($"LocateTarget: pid={pid} 进程不存在");
       return null;
     }
 
     var name = process.ProcessName;
+    ScanDiag.Log($"LocateTarget: pid={pid} 进程名={name}");
     if (name != "Weixin" && name != "WeChat" && name != "WeChatAppEx")
     {
+      ScanDiag.Log("LocateTarget: 不是微信进程");
       return null;
     }
 
     if (DwmNative.IsWindowCloaked(hwnd))
     {
+      ScanDiag.Log("LocateTarget: 窗口被 cloaked");
       return null;
     }
 
     WinUserNative.GetClientRect(hwnd, out WinUserNative.RECT client);
+    ScanDiag.Log($"LocateTarget: 客户区={client.Width}x{client.Height}");
     if (client.Width < 420 || client.Height < 500)
     {
+      ScanDiag.Log("LocateTarget: 客户区太小");
       return null;
     }
 
@@ -139,6 +149,7 @@ public sealed class WindowTargetLocator
     var physicalHeight = (int)(client.Height * scale);
 
     var title = GetWindowTitle(hwnd);
+    ScanDiag.Log($"LocateTarget: 绑定成功 {name} {physicalWidth}x{physicalHeight} dpi={dpi}");
     return new WindowTarget(hwnd, (int)pid, name, "微信", title, physicalWidth, physicalHeight, dpi, IsFixture: false);
   }
 
