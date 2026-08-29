@@ -297,13 +297,12 @@ public sealed class AppViewModel : INotifyPropertyChanged
     }
     else
     {
-      UserMessage = "请在 8 秒内切换到微信合并聊天记录窗口并将其置于前台…";
-      await Task.Delay(8000);
+      UserMessage = "请把微信合并聊天记录窗口置于前台；检测到后自动绑定，最长等待 60 秒…";
+      var bound = await WaitForWeChatForegroundAsync(TimeSpan.FromSeconds(60));
       UserMessage = null;
-      var bound = new WindowTargetLocator().LocateTarget();
       if (bound is null)
       {
-        ErrorMessage = "未在前台找到微信窗口；请先打开微信合并聊天记录窗口再开始。";
+        ErrorMessage = "等待期内未检测到微信窗口置于前台；请先打开微信合并聊天记录窗口再开始。";
         State = AppState.Error;
         return;
       }
@@ -325,6 +324,26 @@ public sealed class AppViewModel : INotifyPropertyChanged
       ErrorMessage = $"启动失败：{exception.Message}";
       State = AppState.Error;
     }
+  }
+
+  // 保留 LocateTarget 的前台 + 微信进程校验，只把“8 秒后一次性读取”放宽为
+  // “窗口期内每 500ms 检测一次”，用户不再需要掐着秒数切窗口。
+  private static async Task<WindowTarget?> WaitForWeChatForegroundAsync(TimeSpan timeout)
+  {
+    var locator = new WindowTargetLocator();
+    var deadline = DateTimeOffset.UtcNow + timeout;
+    while (DateTimeOffset.UtcNow < deadline)
+    {
+      var bound = locator.LocateTarget();
+      if (bound is not null)
+      {
+        return bound;
+      }
+
+      await Task.Delay(500);
+    }
+
+    return null;
   }
 
   private void BeginCountdown()
