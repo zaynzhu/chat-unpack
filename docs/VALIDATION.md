@@ -4,9 +4,9 @@
 >
 > 已验证平台：macOS 13+、Apple Silicon（`arm64`）
 >
-> 开发中平台：Windows 11 23H2+、x64；已编译/运行/部分验证（基线通过 + FixtureHost 200 条端到端 257 条 + WGC 修复），真实微信 L4 验收未完成
+> 开发中平台：Windows 11 23H2+、x64；已编译/运行/部分验证（基线通过 + FixtureHost 200 条端到端 257 条 + WGC 修复）；2026-08-29 首次真实微信 L4 实测：流程前半段通过，捕获环节确认被微信 4.x 防截屏保护封锁（见 2.4），命中计划停止条件，方向待决策
 >
-> 状态日期：2026-08-25
+> 状态日期：2026-08-29
 
 本文档只记录当前 checkout 能证明的实现、验证证据、已知限制和剩余验收，不充当版本流水账。产品和隐私约束见 [DESIGN.md](DESIGN.md)。
 
@@ -103,6 +103,36 @@ Windows v0.1 的代码开发边界、阶段和验收层级见 [WINDOWS-V0.1-PLAN
 - FixtureHost 完整人工清单（复制/保存/清空/暂停/58-59 重复/深色切换/最小尺寸）。
 - Windows CI、publish 签名、官方微信 4.x 兼容。
 
+### 2.4 Windows 真实微信 L4 首次实测：捕获路线被微信防截屏保护封锁
+
+2026-08-29 在真实 Windows 11（10.0.26200 x64）上首次完成官方微信 L4 实测。微信版本 4.1.12.26（Weixin.exe，Qt 窗口类 `Qt51514QWindowIcon`；合并记录窗口属于 Weixin 主进程而非 WeChatAppEx）。
+
+流程前半段实测通过：轮询目标绑定（见下方改造）、目标确认、3 秒倒计时、扫描启动、滚动策略选择（微信无 UIA ScrollPattern，按预期进入 SendInput 回退）。在捕获环节失败，随后用只读探针（Win32 查询 + 内存像素统计，不落盘、不提取正文）完成定位：
+
+- **微信 4.1.12.26 对全部顶层窗口设置了 `WDA_EXCLUDEFROMCAPTURE` 显示保护**（`GetWindowDisplayAffinity` 返回 0x11），含「群聊的聊天记录」合并记录窗口、主窗和聊天窗。
+- PrintWindow 带/不带 `PW_RENDERFULLCONTENT` 均为 100% 黑帧。
+- WGC：`CreateForWindow` 成功、捕获项可创建（704×902 与窗口吻合）、会话可启动，但**始终收不到帧**；同一探针对无保护对照窗口立即出帧且 96.9% 非黑像素。
+- 结论：微信 4.x 在 Windows 上主动封锁所有标准截屏通道（WGC/GDI/PrintWindow，桌面复制同属 DWM 组合层）。命中计划第 14 节停止条件「Windows Graphics Capture 无法稳定捕获官方微信窗口」。绕过只能靠注入、Hook 或读进程内存，均为隐私红线禁止——捕获式 OCR 路线对微信 4.x 不可行。
+
+对照实验同时发现并修复了应用自身的一个独立 Bug（与微信无关，普通窗口同样触发）：
+
+- `GraphicsCaptureInterop.CreateItemForWindow` 用 `Marshal.GetObjectForIUnknown(...) as GraphicsCaptureItem` 转换 WinRT 运行时**类**：RCW 类转换恒为 null（WinRT **接口**转换不受影响，这解释了前一步 `IDirect3DDevice` 为何侥幸通过）。修复为 `WinRT.MarshalInspectable<GraphicsCaptureItem>.FromAbi`，对照窗口帧捕获验证通过。
+- `Direct3D11CaptureFramePool.Create` 要求调用线程持有 WinRT DispatcherQueue（WPF 线程默认没有；探针无队列时同样零帧）。修复为 `CreateFreeThreaded`。
+- 由此确认：此前 FixtureHost 端到端跑通时实际使用 BitBlt/PrintWindow 兜底，**WGC 在应用内从未出过帧**；修复后 WGC 对普通窗口可用，对微信窗口仍因 WDA 不出帧。
+
+流程改造：目标绑定从「8 秒后一次性读取前台」改为「60 秒内每 500ms 轮询 `LocateTarget`，检测到微信前台立即绑定」（前台 + 微信进程校验保留）。原机制在实测中因切窗时机脆弱失败，新机制实机绑定成功。
+
+待决策方向（命中停止条件，回到设计）：
+
+- 评估微信 3.9.x（计划原定不兼容）是否无 WDA 保护，需用户自行安装旧版后只读复测。
+- 产品转向「导入截图」：用户用微信自带截图（进程内不受 WDA 限制）分屏截取，应用本地 OCR → 拼接 → Markdown，保留核心价值且完全合规。
+- 或暂停 Windows 端捕获路线，保留 macOS 路线（macOS 无 display affinity 机制，ScreenCaptureKit 不受影响）。
+
+仍未验证（不记为已通过）：
+
+- 修复后 WGC 路径在应用内经 FixtureHost 完整回归。
+- 上述任一方向决策后的新路线验收。
+
 ## 3. 标准验证命令
 
 ```bash
@@ -170,10 +200,11 @@ rg -n -i 'URLSession|URLRequest|NWConnection|socket|upload|telemetry|sqlite|mach
 - 图片、表情、语音和视频的可靠视觉分类；当前无可靠信号时输出通用非文字类型。
 - Windows publish、真实桌面 OCR、单窗口捕获、滚动、暂停和导出的完整人工验收（首次 restore/Debug/Release 构建/核心检查/启动已通过，见 2.2；FixtureHost 200 条端到端已跑通，见 2.3）。
 - Fake 主应用完整状态流（复制、保存、清空、暂停）和 FixtureHost 完整滚动/主题/尺寸的人工走查。
-- 官方微信 Windows 4.x 的进程身份、窗口结构、消息区域和滚动行为校准（路径已放开但验收未完成，见 2.3）。
+- 官方微信 Windows 4.x 的进程身份、窗口结构、消息区域和滚动行为校准——2026-08-29 实测结论：微信 4.1.12.26 以 WDA_EXCLUDEFROMCAPTURE 封锁捕获路线，捕获式方案不可行（见 2.4），Windows 端方向待决策。
 
 ## 7. 已知风险
 
+- 微信 4.x 已实测对全部窗口设置 `WDA_EXCLUDEFROMCAPTURE` 防截屏保护，所有屏幕捕获路线在 Windows 上不可用（2026-08-29 实测，见 2.4）；绕过手段均为隐私红线禁止。
 - 微信升级可能改变标题、边距、字体、时间位置和滚动行为。
 - OCR 不能保证昵称、Emoji、号码和低对比度文本完全准确。
 - 尾部结构清理是保守启发式；新增规则必须同时提供“应删除”和“不得误删”的虚构回归样例。
