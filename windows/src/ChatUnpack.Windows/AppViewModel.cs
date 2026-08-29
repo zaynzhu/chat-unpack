@@ -1,20 +1,24 @@
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 
 using ChatUnpack.Core.Domain;
 using ChatUnpack.Core.Export;
 using ChatUnpack.Windows.Capture;
+using ChatUnpack.Windows.Import;
 
 namespace ChatUnpack.Windows;
 
 public enum AppState
 {
   Idle,
+  Importing,
   ConfirmingTarget,
   Countdown,
   Scanning,
@@ -29,7 +33,11 @@ public sealed class AppViewModel : INotifyPropertyChanged
   private ICaptureCoordinator? captureCoordinator;
   private readonly MarkdownRenderer markdownRenderer = new();
   private readonly MarkdownChunker markdownChunker = new();
+  private readonly ImportRecognitionService importRecognitionService = new();
   private readonly List<string> copyParts = [];
+  private readonly ObservableCollection<ImportedImage> importImages = [];
+  private bool isRecognizing;
+  private string importProgressText = string.Empty;
   private CancellationTokenSource? operationCancellation;
   private AppState state = AppState.Idle;
   private CaptureTarget? target;
@@ -56,6 +64,7 @@ public sealed class AppViewModel : INotifyPropertyChanged
         or AppState.Countdown
         or AppState.Scanning
         or AppState.Paused
+        or AppState.Importing
         or AppState.Error);
     PauseCommand = new RelayCommand(Pause, () => State == AppState.Scanning);
     ResumeCommand = new RelayCommand(Resume, () => State == AppState.Paused);
@@ -71,6 +80,22 @@ public sealed class AppViewModel : INotifyPropertyChanged
     ClearResultCommand = new RelayCommand(
       ClearResult,
       () => State == AppState.ResultEditing || State == AppState.Error);
+    OpenImportCommand = new RelayCommand(OpenImport, () => State == AppState.Idle);
+    ImportAddFromClipboardCommand = new RelayCommand(
+      AddImportFromClipboard,
+      () => State == AppState.Importing && !IsRecognizing);
+    ImportRemoveCommand = new RelayCommand<ImportedImage>(
+      RemoveImportImage,
+      _ => State == AppState.Importing && !IsRecognizing);
+    ImportClearCommand = new RelayCommand(
+      ClearImportImages,
+      () => State == AppState.Importing && !IsRecognizing && importImages.Count > 0);
+    ImportStartCommand = new RelayCommand(
+      () => { _ = StartImportRecognitionAsync(); },
+      () => State == AppState.Importing
+        && !IsRecognizing
+        && importImages.Count > 0
+        && importRecognitionService.IsOcrAvailable);
   }
 
   public event PropertyChangedEventHandler? PropertyChanged;
@@ -84,10 +109,20 @@ public sealed class AppViewModel : INotifyPropertyChanged
   public ICommand CopyMarkdownCommand { get; }
   public ICommand SaveMarkdownCommand { get; }
   public ICommand ClearResultCommand { get; }
+  public ICommand OpenImportCommand { get; }
+  public ICommand ImportAddFromClipboardCommand { get; }
+  public ICommand ImportRemoveCommand { get; }
+  public ICommand ImportClearCommand { get; }
+  public ICommand ImportStartCommand { get; }
 
-  public string PreviewNotice => "Windows 代码尚未在 Windows 构建/运行；Fake 模式不是微信验收。";
+  public string PreviewNotice =>
+    "截图导入：用微信自带截图后本地识别拼接；自动扫描因微信 4.x 防截屏已停用。";
 
-  public string PrivacyNotice => "完全离线；当前版本只生成内存中的虚构记录，不定位、枚举、捕获、OCR、滚动或访问微信。";
+  public string PrivacyNotice =>
+    "完全离线；截图只在内存中短暂存在，识别完成即释放，不落盘、不上传。";
+
+  // 自动扫描依赖窗口捕获；Release 下只剩已确认不可用的真实微信路径，仅 Fixture 调试模式开放。
+  public bool AutoScanAvailable => WindowsPreflightService.IsFixtureMode();
 
   public AppState State
   {
@@ -110,11 +145,12 @@ public sealed class AppViewModel : INotifyPropertyChanged
   public string StateTitle => State switch
   {
     AppState.Idle => "准备开始",
+    AppState.Importing => "导入截图识别",
     AppState.ConfirmingTarget => "确认虚构目标",
     AppState.Countdown => "即将开始 Fake 扫描",
     AppState.Scanning => "正在运行 Fake 扫描",
     AppState.Paused => "Fake 扫描已暂停",
-    AppState.ResultEditing => "检查 Fake 结果",
+    AppState.ResultEditing => "检查结果",
     AppState.Error => "发生问题",
     _ => string.Empty
   };
@@ -208,6 +244,30 @@ public sealed class AppViewModel : INotifyPropertyChanged
   {
     get => pauseReason;
     private set => SetField(ref pauseReason, value);
+  }
+
+  public ObservableCollection<ImportedImage> ImportImages => importImages;
+
+  public string ImportImageSummary => importImages.Count == 0
+    ? "还没有截图"
+    : $"已导入 {importImages.Count} 张截图";
+
+  public bool IsRecognizing
+  {
+    get => isRecognizing;
+    private set
+    {
+      if (SetField(ref isRecognizing, value))
+      {
+        RaiseCommandStates();
+      }
+    }
+  }
+
+  public string ImportProgressText
+  {
+    get => importProgressText;
+    private set => SetField(ref importProgressText, value);
   }
 
   public int NextCopyPartIndex
@@ -323,6 +383,170 @@ public sealed class AppViewModel : INotifyPropertyChanged
     {
       ErrorMessage = $"启动失败：{exception.Message}";
       State = AppState.Error;
+    }
+  }
+
+  private void OpenImport()
+  {
+    if (State != AppState.Idle)
+    {
+      return;
+    }
+
+    ErrorMessage = string.Empty;
+    UserMessage = null;
+
+    if (!importRecognitionService.IsOcrAvailable)
+    {
+      ErrorMessage = "未安装简体中文 OCR 语言；请在系统设置 → 时间和语言 → 语言 中添加“中文(简体)”并勾选 OCR";
+      State = AppState.Error;
+      return;
+    }
+
+    State = AppState.Importing;
+  }
+
+  private void AddImportFromClipboard()
+  {
+    try
+    {
+      var source = Clipboard.GetImage();
+      if (source is null)
+      {
+        UserMessage = "剪贴板里没有图片；请先用微信截图（Alt+A）或复制一张图片再试。";
+        return;
+      }
+
+      importImages.Add(ImportedImage.FromBitmapSource($"截图 {importImages.Count + 1}", source));
+      UserMessage = null;
+      OnPropertyChanged(nameof(ImportImageSummary));
+      RaiseCommandStates();
+    }
+    catch (Exception exception)
+    {
+      UserMessage = $"读取剪贴板图片失败：{exception.Message}";
+    }
+  }
+
+  // 由 MainWindow 的拖放处理器调用；只接受本地图片文件，读取后与粘贴路径汇合。
+  public void AddImportFiles(IEnumerable<string> paths)
+  {
+    if (State != AppState.Importing || IsRecognizing)
+    {
+      return;
+    }
+
+    var added = 0;
+    var failed = 0;
+    foreach (var path in paths)
+    {
+      try
+      {
+        var extension = Path.GetExtension(path).ToLowerInvariant();
+        if (extension is not (".png" or ".jpg" or ".jpeg" or ".bmp"))
+        {
+          failed++;
+          continue;
+        }
+
+        var source = new BitmapImage();
+        using (var stream = File.OpenRead(path))
+        {
+          source.BeginInit();
+          source.CacheOption = BitmapCacheOption.OnLoad;
+          source.StreamSource = stream;
+          source.EndInit();
+        }
+
+        source.Freeze();
+        importImages.Add(ImportedImage.FromBitmapSource($"截图 {importImages.Count + 1}", source));
+        added++;
+      }
+      catch
+      {
+        failed++;
+      }
+    }
+
+    if (added > 0)
+    {
+      UserMessage = null;
+    }
+
+    if (failed > 0)
+    {
+      UserMessage = $"{failed} 个文件不是可识别的图片格式，已跳过。";
+    }
+
+    OnPropertyChanged(nameof(ImportImageSummary));
+    RaiseCommandStates();
+  }
+
+  private void RemoveImportImage(ImportedImage? image)
+  {
+    if (image is null)
+    {
+      return;
+    }
+
+    importImages.Remove(image);
+    image.Dispose();
+    OnPropertyChanged(nameof(ImportImageSummary));
+    RaiseCommandStates();
+  }
+
+  private void ClearImportImages()
+  {
+    foreach (var image in importImages)
+    {
+      image.Dispose();
+    }
+
+    importImages.Clear();
+    ImportProgressText = string.Empty;
+    OnPropertyChanged(nameof(ImportImageSummary));
+    RaiseCommandStates();
+  }
+
+  private async Task StartImportRecognitionAsync()
+  {
+    if (State != AppState.Importing || IsRecognizing || importImages.Count == 0)
+    {
+      return;
+    }
+
+    IsRecognizing = true;
+    ErrorMessage = string.Empty;
+    UserMessage = null;
+    ImportProgressText = "准备识别…";
+
+    try
+    {
+      var transcript = await importRecognitionService.RecognizeAsync(
+        importImages,
+        "截图导入记录",
+        (completed, messageCount) =>
+          ImportProgressText = $"识别 {completed}/{importImages.Count} 张…（消息 {messageCount} 条）",
+        CancellationToken.None);
+
+      Transcript = transcript;
+      MarkdownText = markdownRenderer.Render(transcript);
+      copySource = string.Empty;
+      copyParts.Clear();
+      CopyPartCount = 0;
+      NextCopyPartIndex = 0;
+      ClearImportImages();
+      State = AppState.ResultEditing;
+    }
+    catch (Exception exception)
+    {
+      ErrorMessage = $"截图识别失败：{exception.Message}";
+      State = AppState.Error;
+    }
+    finally
+    {
+      IsRecognizing = false;
+      ImportProgressText = string.Empty;
     }
   }
 
@@ -484,6 +708,11 @@ public sealed class AppViewModel : INotifyPropertyChanged
     }
 
     operationCancellation?.Cancel();
+    if (State == AppState.Importing)
+    {
+      ClearImportImages();
+    }
+
     ResetToIdle();
   }
 
@@ -586,6 +815,7 @@ public sealed class AppViewModel : INotifyPropertyChanged
     operationCancellation?.Dispose();
     operationCancellation = null;
     captureCoordinator?.Resume();
+    ClearImportImages();
     Transcript = null;
     MarkdownText = string.Empty;
     copySource = string.Empty;
@@ -621,6 +851,11 @@ public sealed class AppViewModel : INotifyPropertyChanged
     (CopyMarkdownCommand as RelayCommand)?.RaiseCanExecuteChanged();
     (SaveMarkdownCommand as RelayCommand)?.RaiseCanExecuteChanged();
     (ClearResultCommand as RelayCommand)?.RaiseCanExecuteChanged();
+    (OpenImportCommand as RelayCommand)?.RaiseCanExecuteChanged();
+    (ImportAddFromClipboardCommand as RelayCommand)?.RaiseCanExecuteChanged();
+    (ImportRemoveCommand as RelayCommand<ImportedImage>)?.RaiseCanExecuteChanged();
+    (ImportClearCommand as RelayCommand)?.RaiseCanExecuteChanged();
+    (ImportStartCommand as RelayCommand)?.RaiseCanExecuteChanged();
   }
 
   private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)

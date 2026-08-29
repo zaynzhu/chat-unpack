@@ -9,11 +9,22 @@
         MinHeight="560"
         Background="{DynamicResource CueCanvas}"
         WindowStartupLocation="CenterScreen">
+  <Window.InputBindings>
+    <KeyBinding Command="{Binding ImportAddFromClipboardCommand}" Key="V" Modifiers="Ctrl" />
+  </Window.InputBindings>
   <Window.Resources>
     <Style x:Key="IdlePanelStyle" TargetType="Grid">
       <Setter Property="Visibility" Value="Collapsed" />
       <Style.Triggers>
         <DataTrigger Binding="{Binding State}" Value="{x:Static local:AppState.Idle}">
+          <Setter Property="Visibility" Value="Visible" />
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+    <Style x:Key="ImportingPanelStyle" TargetType="Grid">
+      <Setter Property="Visibility" Value="Collapsed" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding State}" Value="{x:Static local:AppState.Importing}">
           <Setter Property="Visibility" Value="Visible" />
         </DataTrigger>
       </Style.Triggers>
@@ -106,7 +117,7 @@
         <TextBlock DockPanel.Dock="Right"
                    VerticalAlignment="Center"
                    Style="{StaticResource CueCaption}"
-                   Text="仅限本地 Fake 预览" />
+                   Text="完全离线 · 本地处理" />
         <TextBlock Style="{StaticResource CueTitle}" Text="{Binding StateTitle}" />
       </DockPanel>
 
@@ -121,28 +132,129 @@
                         VerticalAlignment="Center">
               <TextBlock Style="{StaticResource CueDisplay}"
                          HorizontalAlignment="Center"
-                         Text="把虚构记录整理成 Markdown"
+                         Text="把聊天记录整理成 Markdown"
                          TextAlignment="Center" />
               <TextBlock Margin="0,14,0,0"
                          Style="{StaticResource CueMuted}"
                          HorizontalAlignment="Center"
-                         Text="点击开始后只会进入 FakeCaptureCoordinator，生成固定的虚构数据。"
+                         Text="用微信自带截图（Alt+A）框选消息列表，贴到这里本地识别拼接；识别、去重、导出全部离线完成。"
                          TextAlignment="Center" />
-              <Button Width="200"
-                      Margin="0,28,0,24"
-                      Command="{Binding StartCommand}"
-                      Content="开始 Fake 预览"
+              <Button Width="220"
+                      Margin="0,28,0,12"
+                      Command="{Binding OpenImportCommand}"
+                      Content="从截图导入识别"
                       Style="{StaticResource CueBtnPrimary}" />
+              <Button Width="220"
+                      Margin="0,0,0,24"
+                      Command="{Binding StartCommand}"
+                      Content="自动扫描窗口（Fixture 调试）"
+                      IsEnabled="{Binding AutoScanAvailable}"
+                      Style="{StaticResource CueBtnSecondary}"
+                      ToolTip="依赖窗口捕获；微信 4.x 已确认防截屏（WDA），此入口仅用于本地 Fixture 调试" />
               <Border Padding="16,12" Style="{StaticResource CueCard}">
                 <StackPanel>
                   <TextBlock Style="{StaticResource CueBody}"
                              FontWeight="SemiBold"
-                             Text="当前范围" />
+                             Text="隐私边界" />
                   <TextBlock Margin="0,8,0,0"
                              Style="{StaticResource CueMuted}"
-                             Text="不定位前台窗口，不读取窗口标题，不访问微信进程，不进行真实捕获、OCR 或滚动。" />
+                             Text="截图只在内存中短暂存在，识别完成即释放；不落盘、不上传、不读取微信数据库、不操作微信窗口。" />
                 </StackPanel>
               </Border>
+            </StackPanel>
+          </Grid>
+
+          <!-- 导入截图页 -->
+          <Grid Style="{StaticResource ImportingPanelStyle}">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+              <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Border Grid.Row="0"
+                    Padding="16,12"
+                    Style="{StaticResource CueCard}">
+              <StackPanel>
+                <TextBlock Style="{StaticResource CueBody}"
+                           FontWeight="SemiBold"
+                           Text="{Binding ImportImageSummary}" />
+                <TextBlock Margin="0,6,0,0"
+                           Style="{StaticResource CueMuted}"
+                           Text="用微信截图（Alt+A）只框选消息列表，不要带窗口标题和侧栏；相邻截图保留一些重复内容即可，拼接时会自动去重。粘贴（Ctrl+V）或把图片文件拖到下方区域。"
+                           TextWrapping="Wrap" />
+              </StackPanel>
+            </Border>
+            <ItemsControl Grid.Row="1"
+                          Margin="0,14,0,0"
+                          AllowDrop="True"
+                          Background="{DynamicResource CueSurfaceAlt}"
+                          Drop="ImportPanel_Drop"
+                          DragOver="ImportPanel_DragOver"
+                          ItemsSource="{Binding ImportImages}"
+                          Padding="10">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <WrapPanel />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Width="180"
+                          Margin="6"
+                          Padding="10"
+                          Style="{StaticResource CueCard}">
+                    <StackPanel>
+                      <Image Height="120"
+                             Stretch="Uniform"
+                             Source="{Binding Preview}" />
+                      <TextBlock Margin="0,8,0,0"
+                                 Style="{StaticResource CueCaption}"
+                                 Text="{Binding DisplayName}" />
+                      <Button Margin="0,8,0,0"
+                              Command="{Binding DataContext.ImportRemoveCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                              CommandParameter="{Binding}"
+                              Content="移除"
+                              Style="{StaticResource CueBtnSecondary}" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <StackPanel Grid.Row="2" Margin="0,14,0,0">
+              <TextBlock FontSize="13"
+                         Foreground="{DynamicResource CuePrimary}"
+                         Text="{Binding ImportProgressText}"
+                         TextWrapping="Wrap">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding IsRecognizing}" Value="True">
+                        <Setter Property="Visibility" Value="Visible" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+              <StackPanel Margin="0,10,0,0"
+                          HorizontalAlignment="Right"
+                          Orientation="Horizontal">
+                <Button Margin="0,0,10,0"
+                        Command="{Binding ImportAddFromClipboardCommand}"
+                        Content="粘贴剪贴板图片"
+                        Style="{StaticResource CueBtnSecondary}" />
+                <Button Margin="0,0,10,0"
+                        Command="{Binding ImportClearCommand}"
+                        Content="清空"
+                        Style="{StaticResource CueBtnSecondary}" />
+                <Button Margin="0,0,10,0"
+                        Command="{Binding CancelCommand}"
+                        Content="返回待机"
+                        Style="{StaticResource CueBtnSecondary}" />
+                <Button Command="{Binding ImportStartCommand}"
+                        Content="开始识别"
+                        Style="{StaticResource CueBtnPrimary}" />
+              </StackPanel>
             </StackPanel>
           </Grid>
 
@@ -329,7 +441,7 @@
               <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
             <StackPanel Grid.Row="0">
-              <TextBlock Style="{StaticResource CueTitle}" Text="结果预览（Fake 数据）" />
+              <TextBlock Style="{StaticResource CueTitle}" Text="结果预览" />
               <TextBlock Margin="0,6,0,14"
                          Style="{StaticResource CueMuted}"
                          Text="{Binding ResultSummary}" />
@@ -371,7 +483,7 @@
             <StackPanel MaxWidth="600" HorizontalAlignment="Center" VerticalAlignment="Center">
               <TextBlock Style="{StaticResource CueDisplay}"
                          HorizontalAlignment="Center"
-                         Text="Fake 预览发生问题" />
+                         Text="发生问题" />
               <TextBlock Margin="0,14,0,0"
                          FontSize="15"
                          Foreground="{DynamicResource CueError}"
