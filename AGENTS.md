@@ -4,7 +4,7 @@
 
 ChatUnpack 是个人自用、完全离线的桌面工具：只在用户主动确认后捕获一个微信合并聊天记录窗口，使用系统本地 OCR 生成 Markdown，由用户自行检查、复制、保存和发送。
 
-当前已验证实现支持 macOS 13+、Apple Silicon（`arm64`）和官方微信。Windows 11 23H2+、x64 的独立 C# / .NET 8 + WPF 客户端正在开发：源码已编译、Core 124 项检查通过、Debug/Release 构建通过、FixtureHost 200 条端到端已跑通（257 条消息）、WGC 捕获互操作已修复（IDXGIDevice IID `54ec77fa`）、真实微信 L4 路径已放开但真实微信验收未完成。
+当前已验证实现支持 macOS 13+、Apple Silicon（`arm64`）和官方微信。Windows 11 23H2+、x64 的独立 C# / .NET 8 + WPF 客户端：2026-08-29 实测确认微信 4.x 对全部窗口设置 WDA_EXCLUDEFROMCAPTURE 防截屏，捕获式扫描对官方微信不可行（证据见 docs/VALIDATION.md 2.4）；已转向「截图导入」模式——用户用微信自带截图分屏截取，应用本地 OCR、跨图拼接、Markdown 导出，管线已实现并验证（2.5）。自动扫描入口仅保留 Fixture 调试。
 
 ## 隐私红线
 
