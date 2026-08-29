@@ -54,7 +54,9 @@ public sealed class WindowsGraphicsCapturer
       GraphicsCaptureSession? session = null;
       try
       {
-        framePool = Direct3D11CaptureFramePool.Create(
+        // CreateFreeThreaded 不要求调用线程持有 WinRT DispatcherQueue（WPF 线程默认没有），
+        // FrameArrived 在线程池触发；下方回调用 TaskCompletionSource，与线程无关。
+        framePool = Direct3D11CaptureFramePool.CreateFreeThreaded(
           direct3DDevice,
           DirectXPixelFormat.B8G8R8A8UIntNormalized,
           1,

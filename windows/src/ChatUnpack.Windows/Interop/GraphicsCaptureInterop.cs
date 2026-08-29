@@ -72,7 +72,9 @@ internal static class GraphicsCaptureInterop
 
           try
           {
-            return Marshal.GetObjectForIUnknown(itemPointer) as GraphicsCaptureItem;
+            // GraphicsCaptureItem 是 WinRT 运行时类，RCW 的 as 转换恒为 null；
+            // 必须经 CsWinRT 的 FromAbi 转换（接口 IDirect3DDevice 可以 as，类不行）。
+            return WinRT.MarshalInspectable<GraphicsCaptureItem>.FromAbi(itemPointer);
           }
           finally
           {
