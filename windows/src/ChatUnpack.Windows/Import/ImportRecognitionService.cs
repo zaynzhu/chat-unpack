@@ -41,7 +41,18 @@ public sealed class ImportRecognitionService
       imageRecognized?.Invoke(index + 1, assembler.MessageCount);
     }
 
-    assembler.Finish(TranscriptStatus.Complete, null);
+    // 一条都没解析出来时标记为不完整并给明确原因，避免“完整 · 0 条”误导用户以为截图里没有消息。
+    if (assembler.MessageCount == 0)
+    {
+      assembler.Finish(
+        TranscriptStatus.Incomplete,
+        "没有解析出任何消息：请确认截图里包含带时间戳的消息列表，且文字清晰（深色截图请用微信默认深色模式整屏截图）");
+    }
+    else
+    {
+      assembler.Finish(TranscriptStatus.Complete, null);
+    }
+
     return assembler.Transcript;
   }
 }

@@ -411,9 +411,27 @@ public sealed class AppViewModel : INotifyPropertyChanged
     try
     {
       var source = Clipboard.GetImage();
+      if (source is null && Clipboard.ContainsFileDropList())
+      {
+        // 某些程序以文件引用形式放剪贴板，GetImage 拿不到。
+        var files = Clipboard.GetFileDropList();
+        if (files.Count > 0)
+        {
+          AddImportFiles(files.Cast<string>());
+          return;
+        }
+      }
+
       if (source is null)
       {
         UserMessage = "剪贴板里没有图片；请先用微信截图（Alt+A）或复制一张图片再试。";
+        return;
+      }
+
+      // DIB 偶发黑屏/空图（尤其高 DPI 下的跨进程贴图）：宽高有效才入库，否则提示重截。
+      if (source.PixelWidth <= 0 || source.PixelHeight <= 0)
+      {
+        UserMessage = "剪贴板图片无效（宽高为 0）；请重新截图后再试。";
         return;
       }
 
