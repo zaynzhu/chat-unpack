@@ -15,6 +15,18 @@ public static class TimestampParser
     @"(?:(?:今天|昨天|前天|星期[一二三四五六日天])\s*)?(?:[01]?\d|2[0-3]):[0-5]\d",
     RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
+  // Windows OCR 在日期时间的数字间插入空格：2026 年 8 月 31 日 1 2:09（12 被拆开）。
+  // 在匹配前规整数字分隔（"1 2:09"→"12:09"、"8 月 31 日"→"8月31日"），并把规整后文本作为匹配源。
+  public static string NormalizeDigitSpacing(string text)
+  {
+    if (string.IsNullOrEmpty(text))
+    {
+      return text;
+    }
+
+    return Regex.Replace(text, @"(\d)\s+(?=\d)", "$1");
+  }
+
   public static TimestampMatch? Match(string text)
   {
     var trimmed = (text ?? string.Empty).Trim();
@@ -22,6 +34,8 @@ public static class TimestampParser
     {
       return null;
     }
+
+    trimmed = NormalizeDigitSpacing(trimmed);
 
     var fullDateMatch = FullDateExpression.Match(trimmed);
     if (fullDateMatch.Success && EndsAtTextBoundary(fullDateMatch, trimmed))

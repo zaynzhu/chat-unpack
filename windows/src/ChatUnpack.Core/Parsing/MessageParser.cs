@@ -72,11 +72,16 @@ public sealed class MessageParser
           headerIndex,
           orderedLines,
           senderPrefix);
+        // 前缀是纯日期（如“2026年8月31日”）：它属于时间锚点的一部分，不是发言人是被误拼的
+        // 时间行（微信合并记录头“昵称+日期 时间”中 OCR 漏掉昵称的情形），不回插正文。
+        var rejectedPrefix = rawPrefix.Length == 0 || senderPrefix.Length > 0 || IsDateLike(rawPrefix)
+          ? null
+          : rawPrefix;
         return new Header(
           headerIndex,
           match,
           sender,
-          rawPrefix.Length == 0 || senderPrefix.Length > 0 ? null : rawPrefix,
+          rejectedPrefix,
           Math.Min(headerIndex, sender?.LineIndex ?? headerIndex));
       })
       .ToList();
