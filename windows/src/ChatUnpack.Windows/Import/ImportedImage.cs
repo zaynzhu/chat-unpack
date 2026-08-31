@@ -50,22 +50,47 @@ public sealed class ImportedImage : IDisposable
       throw new InvalidOperationException("图片尺寸无效");
     }
 
-    var converted = new FormatConvertedBitmap(source, WpfPixelFormats.Bgra32, null, 0);
-    RenderOptions.SetBitmapScalingMode(converted, BitmapScalingMode.HighQuality);
-    converted.Freeze();
-    return new ImportedImage(displayName, converted, ToOcrSoftwareBitmap(converted));
+    // Bgra32 预览用于 UI 展示；OCR 位图另做 alpha 修复（剪贴板 DIB 的 alpha 常为脏数据）。
+    var preview = new FormatConvertedBitmap(source, WpfPixelFormats.Bgra32, null, 0);
+    RenderOptions.SetBitmapScalingMode(preview, BitmapScalingMode.HighQuality);
+    preview.Freeze();
+    return new ImportedImage(displayName, preview, ToOcrSoftwareBitmap(source));
   }
 
-  // OCR 输入预处理：小图放大（双三次插值）→ 深色底反色 → 灰阶对比度拉伸。
-  // 微信深色模式截图（尤其小尺寸）直接 OCR 几乎全乱码（VALIDATION 2.5 用户实测）：
-  // 逐像素 2x 放大不改善边缘，必须插值放大 + 拉开文字/背景灰阶，Windows OCR 才能稳定切分字符。
-  private static SoftwareBitmap ToOcrSoftwareBitmap(BitmapSource bgraSource)
+  // OCR 输入预处理：转为不透明灰阶底 → 小图放大（双三次插值）→ 深色底反色 → 对比度拉伸。
+  // 微信剪贴板 DIB 的 alpha 字节常为脏数据：按预乘 alpha 解读时整图透明/发黑，OCR 一行都认不出
+  // （VALIDATION 2.5 用户实测 0 条）。因此 OCR 位图统一走 Bgra32(忽略 alpha)→强制不透明，再缩放。
+  private static SoftwareBitmap ToOcrSoftwareBitmap(BitmapSource source)
   {
-    var scaleFactor = bgraSource.PixelWidth * bgraSource.PixelHeight >= 4_000_000 ? 1 : OcrScale;
-    BitmapSource scaled = bgraSource;
+    // 第一步：原尺寸转 Bgra32 并把 alpha 强制 255（CopyPixels 出来的 Bgra32 中 RGB 未预乘）。
+    var opaqueStride = source.PixelWidth * 4;
+    var opaque = new byte[opaqueStride * source.PixelHeight];
+    source.CopyPixels(opaque, opaqueStride, 0);
+    for (var i = 3; i < opaque.Length; i += 4)
+    {
+      opaque[i] = 255;
+    }
+
+    var opaqueBitmap = new WriteableBitmap(
+      source.PixelWidth,
+      source.PixelHeight,
+      96,
+      96,
+      WpfPixelFormats.Bgra32,
+      null);
+    opaqueBitmap.WritePixels(
+      new System.Windows.Int32Rect(0, 0, source.PixelWidth, source.PixelHeight),
+      opaque,
+      opaqueStride,
+      0);
+    opaqueBitmap.Freeze();
+
+    // 第二步：插值缩放。
+    var scaleFactor = source.PixelWidth * source.PixelHeight >= 4_000_000 ? 1 : OcrScale;
+    BitmapSource scaled = opaqueBitmap;
     if (scaleFactor > 1)
     {
-      var transform = new TransformedBitmap(bgraSource, new ScaleTransform(scaleFactor, scaleFactor));
+      var transform = new TransformedBitmap(opaqueBitmap, new ScaleTransform(scaleFactor, scaleFactor));
       transform.Freeze();
       scaled = transform;
     }

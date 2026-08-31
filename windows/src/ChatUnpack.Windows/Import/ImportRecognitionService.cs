@@ -37,9 +37,13 @@ public sealed class ImportRecognitionService
       var bitmap = images[index].Full;
       var region = new MessageRegionBounds(0, 0, bitmap.PixelWidth, bitmap.PixelHeight);
       var lines = await ocrService.RecognizeAsync(bitmap, region, index, cancellationToken);
+      // 零内容诊断：只记尺寸与行数，不落任何图片/文字内容（.scandiag.log，gitignored）。
+      ScanDiag.Log($"import: img={index + 1}/{images.Count} {bitmap.PixelWidth}x{bitmap.PixelHeight} ocrLines={lines.Count}");
       assembler.Append(parser.Parse(lines, index), index);
       imageRecognized?.Invoke(index + 1, assembler.MessageCount);
     }
+
+    ScanDiag.Log($"import: done imgCount={images.Count} messages={assembler.MessageCount} status={assembler.Transcript.Status}");
 
     // 一条都没解析出来时标记为不完整并给明确原因，避免“完整 · 0 条”误导用户以为截图里没有消息。
     if (assembler.MessageCount == 0)
