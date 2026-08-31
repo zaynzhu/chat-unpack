@@ -42,7 +42,7 @@
 - **Auto Scroll** -- Per-viewport capture + cross-viewport assembly, preserving real duplicate messages within the same viewport
 - **Conservative Parsing** -- Outputs "Unknown Sender" when sender cannot be confirmed, generic placeholder for unrecognized media types — no guessing
 - **Chunked Copy** -- Markdown over 1800 chars auto-split at message boundaries, each chunk written to clipboard sequentially
-- **Dual Platform** -- macOS 13+ Apple Silicon (Swift) verified, Windows 11 x64 (C# .NET 8 WPF) in development
+- **Dual Platform** -- macOS 13+ Apple Silicon (Swift) verified; Windows 11 x64 (C# .NET 8 WPF) supports screenshot import after WeChat 4.x blocked capture (see docs/VALIDATION.md 2.5)
 - **Mock Testing** -- Built-in 200-message FixtureHost window for end-to-end validation without touching real WeChat
 
 ---

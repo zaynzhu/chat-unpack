@@ -1,17 +1,17 @@
 # ChatUnpack Windows v0.1
 
-这是 ChatUnpack 的 Windows 开发预览工程，目标为 Windows 11 23H2 及以上、x64 和 .NET 8。
+这是 ChatUnpack 的 Windows 客户端工程，目标为 Windows 11 23H2 及以上、x64 和 .NET 8。
 
-当前源码已经包含纯 C# Core、本地 Fake WPF 闭环和 200 条完全虚构的 FixtureHost，但尚未在 Windows 编译或运行。主应用只生成内存中的虚构 Transcript，不定位、枚举、捕获、OCR、滚动或访问微信；窗口会明确显示“Windows v0.1 开发预览版，尚未在 Windows 构建/运行”。
+2026-08-29 实测确认微信 4.x 对全部窗口设置 `WDA_EXCLUDEFROMCAPTURE` 防截屏，窗口捕获式扫描对官方微信不可行（证据见 [VALIDATION 2.4](../docs/VALIDATION.md)）。当前产品形态为**截图导入**：用户用微信自带截图（Alt+A）分屏截取消息，应用本地 OCR、跨图拼接、Markdown 导出，管线已实机验收（[VALIDATION 2.5](../docs/VALIDATION.md)）。自动扫描入口仅保留 Fixture 调试模式（Release 构建中禁用）。
 
-首次在真实 Windows 机器继续工作时，必须先阅读并执行 [Windows 首次实机开发与验收交接](../docs/WINDOWS-FIRST-RUN-HANDOFF.md)。其中包含当前进度、逐步命令、人工检查项、失败处理、记录模板和后续开发边界。
+进展、验证证据和已知限制的完整记录见 [Windows v0.1 计划](../docs/WINDOWS-V0.1-PLAN.md)与[验证与交接](../docs/VALIDATION.md)。
 
 ## 项目
 
 - `src/ChatUnpack.Core`：纯 `net8.0` 核心库，包含解析、拼接和 Markdown 导出，不依赖 Windows 或 WPF。
-- `src/ChatUnpack.Windows`：使用 `net8.0-windows10.0.22621.0` 和 x64 的 WPF 本地 Fake 流程，支持虚构目标确认、倒计时、暂停、结果编辑、分段复制和保存。
+- `src/ChatUnpack.Windows`：WPF 主应用。截屏导入页（Ctrl+V 粘贴/文件拖拽/缩略图队列/识别进度/分段复制/保存）+ Fixture 调试扫描入口；`Import/` 目录是导入识别管线，复用 Core 的解析与拼接。
 - `src/ChatUnpack.FixtureHost.Windows`：包含恰好 200 条虚构消息的隔离可滚动 WPF 窗口，支持浅色和深色。
-- `tests/ChatUnpack.Core.TestRunner`：无第三方测试框架的核心测试运行器，当前源码有 122 处静态检查调用，实际执行数量和结果以首次 Windows 运行输出为准。
+- `tests/ChatUnpack.Core.TestRunner`：无第三方测试框架的核心测试运行器，当前 136 项检查全部通过。
 
 ## Windows 上的命令
 
@@ -27,16 +27,17 @@ dotnet run --project .\windows\src\ChatUnpack.Windows -c Debug -p:Platform=x64
 .\windows\scripts\run-fixture-host.ps1
 ```
 
-第一轮只验证 Core、Fake 主应用和 FixtureHost，不打开或操作真实微信。请保留完整命令输出，但不要保存或提交任何真实聊天截图、窗口标题或导出内容。
+发布免安装产物：
+
+```powershell
+dotnet publish .\windows\src\ChatUnpack.Windows -c Release -r win-x64 --self-contained true -o windows\publish\ChatUnpack.Windows
+```
 
 通过标准：
 
 - Core Test Runner 退出码为 0，并报告全部检查通过。
 - Debug 和 Release 解决方案构建都成功。
-- Fake 主应用能完成虚构目标确认、倒计时、暂停/继续、结果编辑、复制和保存。
-- FixtureHost 显示 200 条消息，能手动滚动并切换浅色/深色。
-- 任何一项失败都只记录为首次 Windows 构建问题，不能写成已验收能力。
+- 主应用"从截图导入识别"：粘贴或拖入截图 → 识别 → 结果页 Markdown 可编辑、可分段复制、可保存；`CHATUNPACK_FIXTURE_MODE=1`（仅 Debug）下自动扫描入口可用于 FixtureHost 端到端。
+- 任何一项失败都只记录为当前问题，不能写成已验收能力。
 
-这些命令只应在 Windows 环境执行。本项目不会在当前 macOS 环境安装或调用 .NET、Windows SDK 或虚拟机。
-
-当前阶段不包含第三方 NuGet 运行时依赖，也不会访问网络、微信进程、微信数据或真实聊天内容。
+本项目不访问网络、微信进程、微信数据或真实聊天内容；导入的截图只在内存中，识别完成即释放。
