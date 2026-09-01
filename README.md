@@ -121,11 +121,20 @@ dotnet run --project .\windows\src\ChatUnpack.FixtureHost.Windows -c Debug
 
 ### 基本流程
 
+**macOS（窗口捕获）：**
+
 1. 在官方微信中打开一份合并聊天记录详情窗口
 2. 点击 ChatUnpack 的「开始汇总」或使用全局快捷键
 3. 确认一次性目标预览，扫描期间不要操作目标窗口
 4. 在结果页检查和编辑 Markdown
 5. 逐段复制或保存完整 Markdown，再由你自行发送
+
+**Windows（截图导入）：**
+
+1. 在微信中用自带截图（Alt+A）分屏截取合并记录，相邻截图保留部分重叠
+2. 在 ChatUnpack 中 Ctrl+V 粘贴或拖拽图片文件入队列
+3. 点击开始识别，应用本地 OCR 并跨图去重拼接
+4. 在结果页检查和编辑 Markdown，逐段复制或保存
 
 ChatUnpack 不会替你选择微信消息、打开聊天记录卡片或发送内容。
 
@@ -170,18 +179,17 @@ SwiftUI 界面、菜单栏与快捷键、设置、导出、单窗口内存捕获
 
 ### Windows（开发中 v0.1）
 
-C# .NET 8 + WPF 客户端。核心处理逻辑（解析/拼接/导出）已移植，FixtureHost 200 条端到端已跑通（257 条消息）。WGC 单窗口捕获、Windows.Media.Ocr 适配、UI Automation 滚动、SendInput 滚轮回退、人工输入门闩和完整扫描协调循环均已实现。真实微信 L4 验收待完成。
+C# .NET 8 + WPF 客户端。2026-08-29 实测确认微信 4.x 对全部窗口设置 `WDA_EXCLUDEFROMCAPTURE` 防截屏，窗口捕获式扫描对官方微信不可行（证据见 [VALIDATION 2.4](docs/VALIDATION.md)）；已按计划停止条件转向**截图导入**模式——用户用微信自带截图（Alt+A）分屏截取，应用本地 OCR、跨图拼接、Markdown 导出，管线已实机验收（见 [VALIDATION 2.5](docs/VALIDATION.md)）。自动扫描入口仅保留 Fixture 调试模式。
 
 | 能力 | macOS | Windows |
 |------|--------|---------|
-| 应用入口 | SwiftUI + 菜单栏 + 快捷键 | WPF + 菜单栏 |
-| 捕获 | ScreenCaptureKit | Windows.Graphics.Capture / BitBlt |
-| OCR | Vision（含置信度） | Windows.Media.Ocr（无置信度） |
-| 滚动 | Accessibility 滚动条 + 滚轮回退 | ScrollPattern + SendInput 滚轮回退 |
-| 拼接 | 相邻视口最长重叠 | 同一算法移植 |
+| 应用入口 | SwiftUI + 菜单栏 + 快捷键 | WPF + 截图导入页 |
+| 输入 | ScreenCaptureKit 窗口捕获 | 微信自带截图（Alt+A）粘贴/拖拽 |
+| OCR | Vision（含置信度） | Windows.Media.Ocr + 深色图预处理 |
+| 滚动/拼接 | 自动滚动 + 相邻视口最长重叠 | 跨图拼接，同一算法移植 |
 | 导出 | Markdown 分段复制 + 保存 | 同一格式移植 |
 | 打包 | arm64 本地签名 | self-contained x64（未签名） |
-| 真实验收 | 用户已自行试用并反馈 | L4 待完成 |
+| 真实验收 | 用户已自行试用并反馈 | 截图导入管线实机验收通过 |
 
 ---
 
@@ -191,7 +199,39 @@ C# .NET 8 + WPF 客户端。核心处理逻辑（解析/拼接/导出）已移�
 - 只有可见文字信号足够明确时才区分图片、语音、视频等类型，否则输出通用非文字占位符
 - 微信界面变化可能影响时间锚点、昵称和正文边界，发送前仍需人工检查
 - 应用不保存扫描历史，也不提供自动更新或公开分发安装器
-- Windows 客户端真实微信验收尚未完成，不能作为当前可用版本交付
+- Windows 截图导入管线已实机验收，但真实微信截图的 OCR 质量（昵称漂移、表情/图片占位）尚未用真实记录充分校准，结果页可手动编辑兜底
+
+---
+
+## ❓ FAQ
+
+<details>
+<summary>ChatUnpack 会读取我的微信数据或联网上传吗？</summary>
+
+不会。它不读取微信数据库、缓存、日志或进程内存，不注入、Hook 或调用微信内部接口，不联网，不上传截图、OCR 文字或日志。所有处理都在本机完成，结果只写入系统剪贴板或你选择的文件。
+
+</details>
+
+<details>
+<summary>为什么 Windows 版改为截图导入，而不是自动扫描窗口？</summary>
+
+2026-08-29 实测确认微信 4.x 对全部窗口设置了 `WDA_EXCLUDEFROMCAPTURE` 防截屏保护，所有标准截屏通道（WGC/GDI/PrintWindow）均无法捕获，绕过只能靠注入或读进程内存——属于隐私红线禁止。截图导入用微信自带截图（Alt+A）作为输入，全程不触碰微信进程（完整证据见 [VALIDATION 2.4](docs/VALIDATION.md)）。
+
+</details>
+
+<details>
+<summary>macOS 版为什么只支持 Apple Silicon？</summary>
+
+当前已验证的构建、签名和 121 项核心检查都基于 Apple Silicon（`arm64`）。这是个人自用项目，按实际设备收敛验证范围；Intel Mac 未验证、不承诺。
+
+</details>
+
+<details>
+<summary>OCR 结果能直接使用吗？</summary>
+
+发送前必须人工检查。OCR 无法恢复画面中未识别出的昵称（会保留"未知发言人"），深色截图、紧凑行距或生僻字仍可能误认，微信界面变化也可能影响时间锚点和正文边界。应用刻意保守输出而不是猜测。
+
+</details>
 
 ---
 

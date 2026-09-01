@@ -120,11 +120,20 @@ Launch a 200-message mock window without touching real WeChat:
 
 ### Basic Flow
 
+**macOS (window capture):**
+
 1. Open a merged chat record detail window in official WeChat
 2. Click "Start" in ChatUnpack or use the global shortcut
 3. Confirm the one-time target preview; do not operate the target window during scanning
 4. Review and edit the Markdown in the result page
 5. Copy chunked or save full Markdown, then send it yourself
+
+**Windows (screenshot import):**
+
+1. Take screenshots of the merged record with WeChat's built-in capture (Alt+A), keeping some overlap between adjacent shots
+2. Paste with Ctrl+V or drag image files into the queue in ChatUnpack
+3. Click start recognition; the app OCRs locally and deduplicates across images
+4. Review and edit the Markdown in the result page, then copy chunked or save
 
 ChatUnpack will not select WeChat messages, open chat record cards, or send content for you.
 
@@ -169,18 +178,17 @@ SwiftUI interface, menu bar + shortcuts, settings, export, single-window memory 
 
 ### Windows (In Development v0.1)
 
-C# .NET 8 + WPF client. Core processing logic (parsing/assembly/export) ported, FixtureHost 200-message end-to-end verified (257 messages). WGC single-window capture, Windows.Media.Ocr adapter, UI Automation scrolling, SendInput wheel fallback, user activity guard, and full scan coordination loop implemented. Real WeChat L4 acceptance pending.
+C# .NET 8 + WPF client. On 2026-08-29, real-device testing confirmed WeChat 4.x sets the `WDA_EXCLUDEFROMCAPTURE` screen-protection flag on all its windows, making window-capture scanning infeasible for official WeChat (evidence in [VALIDATION 2.4](docs/VALIDATION.md)). The product pivoted to **screenshot import** per the plan's stop condition: the user captures with WeChat's built-in screenshot (Alt+A), and the app performs local OCR, cross-image assembly, and Markdown export — the pipeline passed on-device acceptance (see [VALIDATION 2.5](docs/VALIDATION.md)). The auto-scan entry remains only as a Fixture debug mode.
 
 | Capability | macOS | Windows |
 |-----------|--------|---------|
-| App Entry | SwiftUI + Menu Bar + Shortcut | WPF + Menu Bar |
-| Capture | ScreenCaptureKit | Windows.Graphics.Capture / BitBlt |
-| OCR | Vision (with confidence) | Windows.Media.Ocr (no confidence) |
-| Scrolling | Accessibility scroll + wheel fallback | ScrollPattern + SendInput wheel fallback |
-| Assembly | Adjacent-viewport longest overlap | Same algorithm ported |
+| App Entry | SwiftUI + Menu Bar + Shortcut | WPF + screenshot import page |
+| Input | ScreenCaptureKit window capture | WeChat built-in screenshot (Alt+A) paste/drag |
+| OCR | Vision (with confidence) | Windows.Media.Ocr + dark-image preprocessing |
+| Scrolling/Assembly | Auto-scroll + adjacent-viewport longest overlap | Cross-image assembly, same algorithm ported |
 | Export | Markdown chunked copy + save | Same format ported |
 | Packaging | arm64 local signing | self-contained x64 (unsigned) |
-| Real Verification | User-tested with feedback | L4 pending |
+| Real Verification | User-tested with feedback | Screenshot import pipeline on-device accepted |
 
 ---
 
@@ -190,7 +198,39 @@ C# .NET 8 + WPF client. Core processing logic (parsing/assembly/export) ported, 
 - Media types (image/voice/video) are only distinguished when text signals are clear enough; otherwise a generic placeholder is used
 - WeChat UI changes may affect timestamp anchors, nicknames, and body boundaries — manual review before sending is required
 - The app does not save scan history, provide auto-update, or offer a public distribution installer
-- Windows client real WeChat acceptance is not yet complete; it cannot be delivered as a currently usable version
+- The Windows screenshot import pipeline passed on-device acceptance, but OCR quality on real WeChat screenshots (nickname drift, emoji/image placeholders) has not yet been fully calibrated against real records; manual editing on the result page serves as a fallback
+
+---
+
+## ❓ FAQ
+
+<details>
+<summary>Does ChatUnpack read my WeChat data or upload anything online?</summary>
+
+No. It never reads WeChat databases, caches, logs, or process memory; never injects, hooks, or calls WeChat internal APIs; never goes online; never uploads screenshots, OCR text, or logs. Everything runs locally, and results go only to the clipboard or a file you choose.
+
+</details>
+
+<details>
+<summary>Why did the Windows version switch to screenshot import instead of auto-scanning a window?</summary>
+
+On 2026-08-29, real-device testing confirmed WeChat 4.x sets the `WDA_EXCLUDEFROMCAPTURE` screen-protection flag on all its windows. Every standard capture channel (WGC/GDI/PrintWindow) fails, and the only bypasses — injection or reading process memory — are forbidden privacy red lines. Screenshot import uses WeChat's own screenshot feature (Alt+A) as input and never touches the WeChat process (full evidence in [VALIDATION 2.4](docs/VALIDATION.md)).
+
+</details>
+
+<details>
+<summary>Why is the macOS build Apple Silicon only?</summary>
+
+The verified build, signing, and 121 deterministic checks all target Apple Silicon (`arm64`). This is a personal-use project scoped to the actual hardware; Intel Macs are unverified and unsupported.
+
+</details>
+
+<details>
+<summary>Can I use the OCR output directly?</summary>
+
+Always review before sending. OCR cannot recover nicknames that were never recognized ("Unknown Sender" is kept instead), dark screenshots, tight line spacing, or rare characters may still be misread, and WeChat UI changes can shift timestamp anchors and body boundaries. The app deliberately stays conservative rather than guessing.
+
+</details>
 
 ---
 
